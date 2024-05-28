@@ -4,3 +4,5 @@ from .PathItem import PathItem
 class PathDivider(PathItem):
     def apply(self, current, context):
         return current, context
+    
+# Trigger a version update chain
