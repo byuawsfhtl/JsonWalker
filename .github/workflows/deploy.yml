@@ -18,4 +18,6 @@ jobs:
     permissions: write-all
     steps:
       - name: Update Version
-        uses: byuawsfhtl/UpdateVersion@v1.0.0
+        uses: byuawsfhtl/UpdateVersion@v1.0.1
+        with:
+          token: ${{ secrets.RLL_BOT_PERSONAL_ACCESS_TOKEN }}
