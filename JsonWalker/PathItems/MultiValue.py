@@ -27,4 +27,3 @@ class MultiValue(PathItem):
             context = new_context
         return values, context
     
-# Trigger
