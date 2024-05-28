@@ -7,7 +7,7 @@ on:
       - '**/README.md'
       - '**/.gitignore'
       - '**/docs/*'
-      # - '**/.github/*'
+      - '**/.github/*'
       - '**/tests/*'
       - '**/_version.py'
 
