@@ -17,13 +17,10 @@ jobs:
     runs-on: ubuntu-latest
     permissions: write-all
     steps:
-      # - uses: actions/checkout@v4
-      #   with:
-      #     fetch-depth: 0
-      #     token: ${{secrets.RLL_BOT_PERSONAL_ACCESS_TOKEN}} 
-
-      - name: Print Token
-        run: echo ${{secrets.RLL_BOT_PERSONAL_ACCESS_TOKEN}}
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          token: ${{secrets.RLL_BOT_PERSONAL_ACCESS_TOKEN}} 
 
       - name: Setup python
         uses: actions/setup-python@v5
