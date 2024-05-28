@@ -1,0 +1,78 @@
+name: Deploy
+
+on:
+  push:
+    branches: [prd, stg, dev]
+    paths-ignore: # Pushes that include only these changed files won't trigger actions
+      - '**/README.md'
+      - '**/.gitignore'
+      - '**/docs/*'
+      - '**/.github/*'
+      - '**/tests/*'
+      - '**/_version.py'
+
+jobs:
+  update-version:
+    name: Update Version
+    runs-on: ubuntu-latest
+    permissions: write-all
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          token: ${{secrets.RLL_BOT_PERSONAL_ACCESS_TOKEN}} 
+
+      - name: Print Token
+        run: echo ${{secrets.RLL_BOT_PERSONAL_ACCESS_TOKEN}}
+
+      - name: Setup python
+        uses: actions/setup-python@v5
+        with:
+          python-version: 3.12
+
+      - name: Update Version Number
+        run: |
+          COMMIT_MSG=$(python UpdateVersion.py)
+          echo $COMMIT_MSG
+          echo "COMMIT_MSG=$COMMIT_MSG" >> $GITHUB_ENV
+          echo "NEW_VERSION=$(echo $COMMIT_MSG | awk -F'to ' '{print $2}')" >> $GITHUB_ENV
+
+      - name: Commit Version Update
+        run: |
+          git config --local user.email "action@github.com"
+          git config --local user.name "GitHub Action"
+          git add _version.py
+          git commit -m "${{ env.COMMIT_MSG }}"
+          git tag ${{ env.NEW_VERSION }}
+          git push
+          git push --tags
+
+      - name: Update Lower Level Branch Versions
+        run: |
+          branch=$(echo "${GITHUB_REF#refs/heads/}")
+
+          if [ "$branch" = "prd" ]; then
+            git checkout stg
+            git merge origin/prd --strategy-option theirs
+            COMMIT_MSG=$(python UpdateVersion.py)
+            NEW_VERSION=$(echo $COMMIT_MSG | awk -F'to ' '{print $2}')
+            echo $COMMIT_MSG
+            git add _version.py
+            git commit -m "$COMMIT_MSG"
+            git tag $NEW_VERSION
+            git push
+            git push --tags
+          fi
+
+          if [ "$branch" = "stg" ] || [ "$branch" = "prd" ]; then
+            git checkout dev
+            git merge origin/stg --strategy-option theirs
+            COMMIT_MSG=$(python UpdateVersion.py)
+            NEW_VERSION=$(echo $COMMIT_MSG | awk -F'to ' '{print $2}')
+            echo $COMMIT_MSG
+            git add _version.py
+            git commit -m "$COMMIT_MSG"
+            git tag $NEW_VERSION
+            git push
+            git push --tags
+          fi
