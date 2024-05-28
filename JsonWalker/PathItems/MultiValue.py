@@ -26,3 +26,5 @@ class MultiValue(PathItem):
             values.append(new_current)
             context = new_context
         return values, context
+    
+# Trigger
