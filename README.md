@@ -220,3 +220,15 @@ This part of the path specifies three different return items, as shown by the 2 
 Each section does the following:
 
 Accesses the key before the >, accesses the key following the > on the item retrieved before the > and returns the default if the key does not exist on the previous item.
+
+## Some Constraints
+1. Indexes must be in the form [n] or [n:m]
+2. Defaults must be in the form (value;type)
+3. MultiValues must be in the form value1, value2, value3
+4. The MultiValue must be the last path in the string
+5. The MultiValue must not contain a path divider, it instead uses a comma for separation and a greater than sign for continuation
+6. The MultiValue must not contain another MultiValue
+7. The Index must have a specific index if it is used in a MultiValue
+8. In order to iterate through a list, a index/range must be specified
+9. The Default must contain a type if it is used in a MultiValue, unless it is a string
+10. Items leave the generator in this order, where their internal order is specified by order in the path: Contexts, Values
