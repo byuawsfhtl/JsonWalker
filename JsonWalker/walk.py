@@ -97,6 +97,8 @@ def walk(jsonData: dict | list, path: str | list[PathItem]):
                 if isinstance(new_current, list):
                     for value in new_current:
                         yield from navigate(value, path[1:], new_context)
+                else:
+                    yield from navigate(new_current, path[1:], new_context)
             else:
                 new_current, new_context = item.apply(current, contexts)
                 yield from navigate(new_current, path[1:], new_context)

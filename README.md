@@ -221,6 +221,92 @@ Each section does the following:
 
 Accesses the key before the >, accesses the key following the > on the item retrieved before the > and returns the default if the key does not exist on the previous item.
 
+#### Involved Example and Demonstration of use benefits
+Old Python Code
+```python
+persons = arkInfo.get('persons', [])
+familyId = ''
+for person in persons:
+    for name in person.get('names', []):
+        for nameForms in name.get('nameForms', []):
+            for parts in nameForms.get('parts', []):
+                for fields in parts.get('fields', []):
+                    for value in fields.get('values', []):
+                        labelID: str = value.get('labelId', '')
+                        if 'PR' in labelID and 'FTHR' not in labelID and 'MTHR' not in labelID:
+                            arkPerson = person
+                            headID = person.get('id', '')
+                            personLinks = person.get('links', {})
+                            persona = personLinks.get('persona', {})
+                            href = persona.get('href', '')
+                            if ark not in href:
+                                hrefPersonaSplit = href.split('personas/')[1]
+                                familyId = hrefPersonaSplit.split('?flag')[0]
+                                isHead = False
+                            familyId = ark
+                            return headTuple(ark=ark, arkPerson=arkPerson, isHead=isHead, headID=headID, familyId=familyId)
+
+    for fields in person.get('fields', {}):
+        for values in fields.get('values', {}):
+            text = values.get('text', '')
+            if 'Head' in text or 'Глава' in text: #'Глава' is head in russian
+                personLinks = person.get('links', {})
+                persona = personLinks.get('persona', {})
+                href = persona.get('href', '')
+                if ark not in href:
+                    hrefPersonaSplit = href.split('personas/')[1]
+                    familyId = hrefPersonaSplit.split('?flag')[0]
+                    isHead = False
+                arkPerson = person
+                familyId = ark
+                return headTuple(ark=ark, arkPerson=arkPerson, isHead=isHead, headID=headID, familyId=familyId)   
+            
+if persons:
+    arkPerson = persons[0]
+    headID = arkPerson.get('id', '')
+    href = arkPerson.get('links', {}).get('persona', {}).get('href', '')
+    splitId = href.split('personas/')
+    if len(splitId) > 1:
+        familyId = splitId[1].split('?flag')[0]
+    else:
+        familyId = ark
+```
+
+With JsonWalker
+```python
+for person, headID, href in walk(arkInfo, 'persons[*]^ | id, links > persona > href('';str)'):
+    for _, labelID in walk(person, 'names[*]^ | nameForms[*] | parts[*] | fields[*] | values[*] | labelId('';str)'):
+        if 'PR' not in labelID or 'FTHR' in labelID or 'MTHR' in labelID:
+            continue
+        arkPerson = person
+        if ark not in href:
+            hrefPersonaSplit = href.split('personas/')[1]
+            familyId = hrefPersonaSplit.split('?flag')[0]
+            isHead = False
+        familyId = ark
+        return headTuple(ark=ark, arkPerson=arkPerson, isHead=isHead, headID=headID, familyId=familyId)
+        
+    for _, text in walk(person, "fields[*]^  | values[*] | text('';str)"):
+        if 'Head' not in text and 'Глава' not in text: #'Глава' is head in russian
+            continue
+        if ark not in href:
+            hrefPersonaSplit = href.split('personas/')[1]
+            familyId = hrefPersonaSplit.split('?flag')[0]
+            isHead = False
+        arkPerson = person
+        familyId = ark
+        return headTuple(ark=ark, arkPerson=arkPerson, isHead=isHead, headID=headID, familyId=familyId) 
+
+familyId = ''
+for person, href in walk(arkInfo, 'persons[0]^|links|persona|href'):
+    headID = person.get('id', '')
+    splitId = href.split('personas/')
+    if len(splitId) > 1:
+        familyId = splitId[1].split('?flag')[0]
+    else:
+        familyId = ark
+```
+
 ## Some Constraints
 1. Indexes must be in the form [n] or [n:m]
 2. Defaults must be in the form (value;type)

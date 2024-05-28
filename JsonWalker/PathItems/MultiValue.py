@@ -2,11 +2,10 @@ from .PathItem import PathItem
 from .Index import Index
 from .constants import MULTI_START, PATH_DIVIDER
 
-from JsonWalker.walk import pathParse
-
 """MultiValue is a PathItem that represents multiple paths to take"""
 class MultiValue(PathItem):
     def __init__(self, multiStr: str):
+        from JsonWalker.walk import pathParse
         assert MULTI_START in multiStr, f"MultiValue requires a {MULTI_START}-separated string"
         assert PATH_DIVIDER not in multiStr, "MultiValue cannot contain a path divider"
         self.multi = multiStr.split(MULTI_START)
