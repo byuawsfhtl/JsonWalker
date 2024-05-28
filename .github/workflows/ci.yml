@@ -1,0 +1,19 @@
+name: CI
+
+on:
+    pull_request:
+        branches: [prd, stg, dev]
+        paths-ignore:
+            - '**/README.md'
+            - '**/.gitignore'
+            - '**/docs/*'
+            - '**/.github/*'
+
+jobs:
+    checkMeds:
+        name: Check Meds (merge every day)
+        runs-on: ubuntu-latest
+        steps:
+            - name: Check Meds
+              uses: byuawsfhtl/MedsAction@v1.0.0
+    
