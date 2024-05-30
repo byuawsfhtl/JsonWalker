@@ -54,3 +54,5 @@ class Index(PathItem):
                     self.end = len(current) + self.end
                 return current[self.start:self.end], context
         return current, context
+
+# Trigger actions
