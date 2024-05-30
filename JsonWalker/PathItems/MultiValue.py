@@ -4,7 +4,12 @@ from .constants import MULTI_START, PATH_DIVIDER
 
 """MultiValue is a PathItem that represents multiple paths to take"""
 class MultiValue(PathItem):
-    def __init__(self, multiStr: str):
+    def __init__(self, multiStr: str) -> None:
+        """Create a new MultiValue object.
+
+        Args:
+            multiStr (str): a string of paths separated by MULTI_START
+        """
         from JsonWalker.walk import pathParse
         assert MULTI_START in multiStr, f"MultiValue requires a {MULTI_START}-separated string"
         assert PATH_DIVIDER not in multiStr, "MultiValue cannot contain a path divider"
@@ -15,14 +20,23 @@ class MultiValue(PathItem):
                 assert not isinstance(item, MultiValue), "MultiValue cannot contain another MultiValue"
                 assert not isinstance(item, Index) or (item.start is not None and item.end is not None), "MultiValue cannot contain an Index without a specific index"
 
-    def apply(self, current, context):
+    def apply(self, current: str, context: list) -> tuple:
+        """Apply the MultiValue to the current value and context.
+
+        Args:
+            current (str): the current value
+            context (list): the current context list
+
+        Returns:
+            tuple: the list of values and the updated context list
+        """
         values = []
         for path in self.paths:
-            new_current = current
-            new_context = context
+            newCurrent = current
+            newContext = context
             for item in path:
-                new_current, new_context = item.apply(new_current, new_context)
-            values.append(new_current)
-            context = new_context
+                newCurrent, newContext = item.apply(newCurrent, newContext)
+            values.append(newCurrent)
+            context = newContext
         return values, context
     
