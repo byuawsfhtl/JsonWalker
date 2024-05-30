@@ -16,4 +16,11 @@ jobs:
         steps:
             - name: Check Meds
               uses: byuawsfhtl/MedsAction@v1.0.0
+
+    standardCheck:
+        name: Python Standard Check
+        runs-on: ubuntu-latest
+        steps:
+            - name: Follow Python Standard
+              uses: byuawsfhtl/PythonStandardAction@v1.0.2
     

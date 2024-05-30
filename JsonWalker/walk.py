@@ -1,3 +1,4 @@
+from typing import Generator
 from .PathItems.PathItem import PathItem
 from .PathItems.Key import Key
 from .PathItems.Index import Index
@@ -16,47 +17,47 @@ def pathParse(path: str) -> list[PathItem]:
     Returns:
         list: the list of PathItems
     """
-    path_items = []
+    pathItems = []
     dividedPaths = path.split(PATH_DIVIDER)
     dividedPaths = [dividedPath.strip() for dividedPath in dividedPaths]
     counter = -1
-    for curr_path in dividedPaths:
+    for currPath in dividedPaths:
         counter += 1
-        while curr_path:
-            curr_path = curr_path.strip()
+        while currPath:
+            currPath = currPath.strip()
             index = 0
-            if curr_path[index] == CONTEXT_START:
-                path_items.append(AddContext())
-                curr_path = curr_path[index+1:]
-            elif curr_path[index] == INDEX_START:
-                indexOfClose = curr_path.find(INDEX_END)
-                path_items.append(Index(curr_path[index:indexOfClose+1]))
-                curr_path = curr_path[indexOfClose+1:]
-            elif curr_path[index] == DEFAULT_START:
-                indexOfClose = curr_path.find(DEFAULT_END)
-                path_items.append(Default(curr_path[index:indexOfClose+1]))
-                curr_path = curr_path[indexOfClose+1:]
-            elif MULTI_START in curr_path:
-                assert dividedPaths.index(curr_path) == len(dividedPaths) - 1, "MultiValue must be the last path in the string"
-                path_items.append(MultiValue(curr_path))
+            if currPath[index] == CONTEXT_START:
+                pathItems.append(AddContext())
+                currPath = currPath[index+1:]
+            elif currPath[index] == INDEX_START:
+                indexOfClose = currPath.find(INDEX_END)
+                pathItems.append(Index(currPath[index:indexOfClose+1]))
+                currPath = currPath[indexOfClose+1:]
+            elif currPath[index] == DEFAULT_START:
+                indexOfClose = currPath.find(DEFAULT_END)
+                pathItems.append(Default(currPath[index:indexOfClose+1]))
+                currPath = currPath[indexOfClose+1:]
+            elif MULTI_START in currPath:
+                assert dividedPaths.index(currPath) == len(dividedPaths) - 1, "MultiValue must be the last path in the string"
+                pathItems.append(MultiValue(currPath))
                 break
-            elif curr_path[index] == PATH_DIVIDER or curr_path[index] == MULTI_CONTINUE:
-                path_items.append(PathDivider())
-                curr_path = curr_path[index+1:]
+            elif currPath[index] == PATH_DIVIDER or currPath[index] == MULTI_CONTINUE:
+                pathItems.append(PathDivider())
+                currPath = currPath[index+1:]
             else:
-                endingIndex = len(curr_path)
+                endingIndex = len(currPath)
                 for delimiter in [INDEX_START, DEFAULT_START, CONTEXT_START, MULTI_CONTINUE, PATH_DIVIDER]:
-                    foundIndex = curr_path.find(delimiter)
+                    foundIndex = currPath.find(delimiter)
                     if foundIndex != -1 and foundIndex < endingIndex:
                         endingIndex = foundIndex
-                path_items.append(Key(curr_path[index:endingIndex].strip()))
-                curr_path = curr_path[endingIndex:]
+                pathItems.append(Key(currPath[index:endingIndex].strip()))
+                currPath = currPath[endingIndex:]
         if counter < len(dividedPaths) - 1:
-            path_items.append(PathDivider())
+            pathItems.append(PathDivider())
 
-    return path_items
+    return pathItems
 
-def walk(jsonData: dict | list, path: str | list[PathItem]):
+def walk(jsonData: dict | list, path: str | list[PathItem]) -> Generator[any, any, any]:
     """Get the nested value from the json data based on the path.
 
     Args:
@@ -64,9 +65,9 @@ def walk(jsonData: dict | list, path: str | list[PathItem]):
         path (str | list[PathItem]): the path to the nested value
 
     Yields:
-        tuple: the contexts and the nested values requested
+        Generator[any, any, any]: the contexts and the nested values requested
     """
-    def navigate(current: any, path: list[PathItem], contexts: list):
+    def navigate(current: any, path: list[PathItem], contexts: list) -> Generator[any, any, any]:
         """Navigate through the json data to find the nested value.
 
         Args:
@@ -75,7 +76,7 @@ def walk(jsonData: dict | list, path: str | list[PathItem]):
             contexts (list): the contexts to raise with the nested value
 
         Yields:
-            tuple: the contexts and the nested values requested
+            Generator[any, any, any]: the contexts and the nested values requested
         """
         if current is None:
             return
@@ -88,20 +89,20 @@ def walk(jsonData: dict | list, path: str | list[PathItem]):
             item = path[0]
             if isinstance(item, MultiValue):
                 # MultiValue is a special case where it returns multiple values, so we yield each value
-                values, new_context = item.apply(current, contexts)
-                yield new_context + values
+                values, newContext = item.apply(current, contexts)
+                yield newContext + values
             elif isinstance(item, Index):
                 # In order to iterate through a list, a range must be specified
                 assert isinstance(current, list), "Index can only be used on a list"
-                new_current, new_context = item.apply(current, contexts)
-                if isinstance(new_current, list):
-                    for value in new_current:
-                        yield from navigate(value, path[1:], new_context)
+                newCurrent, newContext = item.apply(current, contexts)
+                if isinstance(newCurrent, list):
+                    for value in newCurrent:
+                        yield from navigate(value, path[1:], newContext)
                 else:
-                    yield from navigate(new_current, path[1:], new_context)
+                    yield from navigate(newCurrent, path[1:], newContext)
             else:
-                new_current, new_context = item.apply(current, contexts)
-                yield from navigate(new_current, path[1:], new_context)
+                newCurrent, newContext = item.apply(current, contexts)
+                yield from navigate(newCurrent, path[1:], newContext)
 
     if isinstance(path, str):
         path = pathParse(path)
