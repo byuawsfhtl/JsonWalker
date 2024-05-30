@@ -3,7 +3,12 @@ from .constants import INDEX_START, INDEX_END, INDEX_RANGE, INDEX_WILDCARD
 
 """Index is a PathItem that represents an index in a list"""
 class Index(PathItem):
-    def __init__(self, indexStr: str):
+    def __init__(self, indexStr: str) -> None:
+        """Create a new Index object.
+
+        Args:
+            indexStr (str): a string of the index or range
+        """
         assert indexStr.startswith(INDEX_START) and indexStr.endswith(INDEX_END), f"Index must be in the form {INDEX_START}n{INDEX_END}"
         index = indexStr[1:-1]
         if INDEX_RANGE in index:
@@ -20,7 +25,16 @@ class Index(PathItem):
             self.end = -1
             self.context = 'index'
 
-    def apply(self, current, context):
+    def apply(self, current: str, context: list) -> tuple:
+        """Apply the Index to the current value and context.
+
+        Args:
+            current (str): the current value
+            context (list): the current context list
+
+        Returns:
+            tuple: the updated value and context list
+        """
         assert self.context in ['index', 'range'], "Invalid context"
         if isinstance(current, list):
             if self.context == 'index':
