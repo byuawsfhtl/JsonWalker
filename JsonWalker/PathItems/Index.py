@@ -1,5 +1,6 @@
 from .PathItem import PathItem
 from .constants import INDEX_START, INDEX_END, INDEX_RANGE, INDEX_WILDCARD
+from typing import Any
 
 """Index is a PathItem that represents an index in a list"""
 class Index(PathItem):
@@ -9,21 +10,57 @@ class Index(PathItem):
         Args:
             indexStr (str): a string of the index or range
         """
-        assert indexStr.startswith(INDEX_START) and indexStr.endswith(INDEX_END), f"Index must be in the form {INDEX_START}n{INDEX_END}"
-        index = indexStr[1:-1]
+        index = self._stripIndex(indexStr)
         if INDEX_RANGE in index:
             start, end = index.split(INDEX_RANGE)
-            assert start.replace("-", "").isdigit() or start == INDEX_WILDCARD, f"Start index must be an integer or {INDEX_WILDCARD}"
-            self.start = int(start) if start != INDEX_WILDCARD else None
 
-            assert end.replace("-", "").isdigit() or end == INDEX_WILDCARD, f"End index must be an integer or {INDEX_WILDCARD}"
-            self.end = int(end) if end != INDEX_WILDCARD else None
+            self._properIndexSyntax(start)
+            self._properIndexSyntax(end)
+
+            self.start = self._convertToIndex(start)
+            self.end = self._convertToIndex(end)
+
             self.context = 'range'
         else:
-            assert index.replace("-", "").isdigit() or index == INDEX_WILDCARD, f"Index must be an integer or {INDEX_WILDCARD}"
-            self.start = int(index) if index != INDEX_WILDCARD else None
+            self._properIndexSyntax(index)
+
+            self.start = self._convertToIndex(index)
             self.end = -1
+            
             self.context = 'index'
+
+    def _stripIndex(self, index: str) -> str:
+        """Strip the index string of the index delimiters.
+
+        Args:
+            index (str): the index string to strip
+
+        Returns:
+            str: the stripped index string
+        """
+        assert index.startswith(INDEX_START) and index.endswith(INDEX_END), f"Index must be in the form {INDEX_START}n{INDEX_END}"
+        return index[1:-1]
+
+    def _properIndexSyntax(self, check: str) -> None:
+        """Check if the index is a valid integer or wildcard.
+
+        Args:
+            check (str): the index string to check
+        """
+        assert check.replace("-", "").isdigit() or check == INDEX_WILDCARD, f"Index must be an integer or {INDEX_WILDCARD}"
+
+    def _convertToIndex(self, index: str) -> int | None:
+        """Convert the index string to an integer.
+
+        Args:
+            index (str): the index string to convert
+
+        Returns:
+            int | None: the converted index or None if it is a wildcard
+        """
+        if index == INDEX_WILDCARD:
+            return None
+        return int(index)
 
     def apply(self, current: str, context: list) -> tuple:
         """Apply the Index to the current value and context.
@@ -36,23 +73,61 @@ class Index(PathItem):
             tuple: the updated value and context list
         """
         assert self.context in ['index', 'range'], "Invalid context"
-        if isinstance(current, list):
-            if self.context == 'index':
-                if self.start is not None:
-                    if self.start < 0:
-                        return current[len(current) + self.start], context
-                    return current[self.start], context
-                return current, context
-            elif self.context == 'range':
-                if self.start is None:
-                    self.start = 0
-                if self.end is None:
-                    self.end = len(current)
-                if self.start < 0:
-                    self.start = len(current) + self.start
-                if self.end < 0:
-                    self.end = len(current) + self.end
-                return current[self.start:self.end], context
-        return current, context
 
-# Trigger actions
+        if not isinstance(current, list):
+            return current, context
+
+        if self.context == 'index':
+            return self._handleIndex(current), context
+        else:
+            return self._handleRange(current), context
+    
+    def _handleIndex(self, current: list) -> Any:
+        """Handles the index access of the list.
+
+        Args:
+            current (list): the current list
+
+        Returns:
+            Any: the value at the index
+        """
+        if self.start is None:
+            return current
+        
+        self.start = self._handlNegativeIndex(current, self.start)
+        if self.start >= len(current):
+            return None
+        
+        return current[self.start]
+    
+    def _handleRange(self, current: list) -> list:
+        """Handles the range access of the list.
+
+        Args:
+            current (list): the current list
+
+        Returns:
+            list: the values in the range
+        """
+        if self.start is None:
+            self.start = 0
+        if self.end is None:
+            self.end = len(current)
+        self.start = self._handlNegativeIndex(current, self.start)
+        self.end = self._handlNegativeIndex(current, self.end)
+        
+        return current[self.start:self.end]
+    
+    def _handlNegativeIndex(self, current: list, index: int) -> int:
+        """Handle negative indexes by converting them to positive indexes.
+
+        Args:
+            current (list): the current list
+            index (int): the index to handle
+
+        Returns:
+            int: the updated index
+        """
+        if index < 0:
+            return len(current) + index
+        return index
