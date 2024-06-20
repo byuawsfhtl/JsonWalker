@@ -1,4 +1,5 @@
 from .PathItem import PathItem
+from typing import Any
 
 """Key is a PathItem that represents a key in a dictionary"""
 class Key(PathItem):
@@ -10,7 +11,7 @@ class Key(PathItem):
         """
         self.key = key
 
-    def apply(self, current: str, context: list) -> tuple:
+    def apply(self, current: str, context: list) -> tuple[Any | None, list]:
         """Apply the Key to the current value and context.
 
         Args:
@@ -18,7 +19,7 @@ class Key(PathItem):
             context (list): the current context list
 
         Returns:
-            tuple: the value at the key and the updated context list
+            tuple[Any | None, list]: the value at the key and the updated context list
         """
         if isinstance(current, dict):
             return current.get(self.key, None), context

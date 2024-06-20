@@ -11,14 +11,33 @@ class MultiValue(PathItem):
             multiStr (str): a string of paths separated by MULTI_START
         """
         from JsonWalker.walk import pathParse
-        assert MULTI_START in multiStr, f"MultiValue requires a {MULTI_START}-separated string"
-        assert PATH_DIVIDER not in multiStr, "MultiValue cannot contain a path divider"
-        self.multi = multiStr.split(MULTI_START)
+        self.multi = self._stripMulti(multiStr)
         self.paths = [pathParse(mult) for mult in self.multi]
         for path in self.paths:
             for item in path:
-                assert not isinstance(item, MultiValue), "MultiValue cannot contain another MultiValue"
-                assert not isinstance(item, Index) or (item.start is not None and item.end is not None), "MultiValue cannot contain an Index without a specific index"
+                self._innerPathRules(item)
+
+    def _stripMulti(self, check: str) -> list[str]:
+        """Break the multi string into the individual paths.
+
+        Args:
+            check (str): the multi string to break
+
+        Returns:
+            list[str]: the broken up multi string
+        """
+        assert MULTI_START in check, f"MultiValue requires a {MULTI_START}-separated string"
+        assert PATH_DIVIDER not in check, "MultiValue cannot contain a path divider"
+        return check.split(MULTI_START)
+    
+    def _innerPathRules(self, item: PathItem) -> None:
+        """Apply the inner path rules to the item.
+
+        Args:
+            item (PathItem): the PathItem to check
+        """
+        assert not isinstance(item, MultiValue), "MultiValue cannot contain another MultiValue"
+        assert not isinstance(item, Index) or (item.start is not None and item.end is not None), "MultiValue cannot contain an Index specification without a specific index"
 
     def apply(self, current: str, context: list) -> tuple:
         """Apply the MultiValue to the current value and context.
