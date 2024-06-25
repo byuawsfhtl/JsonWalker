@@ -1,6 +1,6 @@
 import ast
 from .PathItem import PathItem
-from .constants import DEFAULT_START, DEFAULT_END, DEFAULT_TYPE_DELIMITER
+from .Constants import DEFAULT_START, DEFAULT_END, DEFAULT_TYPE_DELIMITER
 
 """Default is a PathItem that represents a default value to use if the current value is None."""
 class Default(PathItem):
