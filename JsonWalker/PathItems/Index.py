@@ -1,5 +1,5 @@
 from .PathItem import PathItem
-from .constants import INDEX_START, INDEX_END, INDEX_RANGE, INDEX_WILDCARD
+from .Constants import INDEX_START, INDEX_END, INDEX_RANGE, INDEX_WILDCARD
 from typing import Any
 
 """Index is a PathItem that represents an index in a list"""
@@ -94,7 +94,7 @@ class Index(PathItem):
         if self.start is None:
             return current
         
-        self.start = self._handlNegativeIndex(current, self.start)
+        self.start = self._handleNegativeIndex(current, self.start)
         if self.start >= len(current):
             return None
         
@@ -113,12 +113,12 @@ class Index(PathItem):
             self.start = 0
         if self.end is None:
             self.end = len(current)
-        self.start = self._handlNegativeIndex(current, self.start)
-        self.end = self._handlNegativeIndex(current, self.end)
+        self.start = self._handleNegativeIndex(current, self.start)
+        self.end = self._handleNegativeIndex(current, self.end)
         
         return current[self.start:self.end]
     
-    def _handlNegativeIndex(self, current: list, index: int) -> int:
+    def _handleNegativeIndex(self, current: list, index: int) -> int:
         """Handle negative indexes by converting them to positive indexes.
 
         Args:

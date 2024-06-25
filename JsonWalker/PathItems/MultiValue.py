@@ -1,6 +1,7 @@
+from JsonWalker.PathItems.DictIter import DictIter
 from .PathItem import PathItem
 from .Index import Index
-from .constants import MULTI_START, PATH_DIVIDER
+from .Constants import MULTI_START, PATH_DIVIDER
 
 """MultiValue is a PathItem that represents multiple paths to take"""
 class MultiValue(PathItem):
@@ -38,6 +39,7 @@ class MultiValue(PathItem):
         """
         assert not isinstance(item, MultiValue), "MultiValue cannot contain another MultiValue"
         assert not isinstance(item, Index) or (item.start is not None and item.end is not None), "MultiValue cannot contain an Index specification without a specific index"
+        assert not isinstance(item, DictIter), "MultiValue cannot contain a DictIter"
 
     def apply(self, current: str, context: list) -> tuple:
         """Apply the MultiValue to the current value and context.
