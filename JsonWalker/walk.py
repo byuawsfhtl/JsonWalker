@@ -1,4 +1,6 @@
 from typing import Generator
+
+from JsonWalker.PathItems.DictIter import DictIter
 from .PathItems.PathItem import PathItem
 from .PathItems.Key import Key
 from .PathItems.Index import Index
@@ -6,7 +8,7 @@ from .PathItems.Default import Default
 from .PathItems.AddContext import AddContext
 from .PathItems.MultiValue import MultiValue
 from .PathItems.PathDivider import PathDivider
-from .PathItems.constants import CONTEXT_START, INDEX_START, INDEX_END, DEFAULT_START, DEFAULT_END, MULTI_START, MULTI_CONTINUE, PATH_DIVIDER
+from .PathItems.Constants import CONTEXT_START, DICT_ITER_END, DICT_ITER_START, INDEX_START, INDEX_END, DEFAULT_START, DEFAULT_END, MULTI_START, MULTI_CONTINUE, PATH_DIVIDER
 
 def pathParse(path: str) -> list[PathItem]:
     """Parses the path string into a list of PathItems
@@ -44,9 +46,13 @@ def pathParse(path: str) -> list[PathItem]:
             elif currPath[index] == PATH_DIVIDER or currPath[index] == MULTI_CONTINUE:
                 pathItems.append(PathDivider())
                 currPath = currPath[index+1:]
+            elif currPath[index] == DICT_ITER_START:
+                indexOfClose = currPath.find(DICT_ITER_END)
+                pathItems.append(DictIter(currPath[index:indexOfClose+1]))
+                currPath = currPath[indexOfClose+1:]
             else:
                 endingIndex = len(currPath)
-                for delimiter in [INDEX_START, DEFAULT_START, CONTEXT_START, MULTI_CONTINUE, PATH_DIVIDER]:
+                for delimiter in [INDEX_START, DEFAULT_START, CONTEXT_START, MULTI_CONTINUE, PATH_DIVIDER, DICT_ITER_START]:
                     foundIndex = currPath.find(delimiter)
                     if foundIndex != -1 and foundIndex < endingIndex:
                         endingIndex = foundIndex
@@ -100,6 +106,11 @@ def walk(jsonData: dict | list, path: str | list[PathItem]) -> Generator[any, an
                         yield from navigate(value, path[1:], newContext)
                 else:
                     yield from navigate(newCurrent, path[1:], newContext)
+            elif isinstance(item, DictIter):
+                assert isinstance(current, dict), "DictIter can only be used on a dictionary"
+                newCurrent, newContext = item.apply(current, contexts)
+                for key, value in newCurrent.items():
+                    yield from navigate(value, path[1:], newContext + [key])
             else:
                 newCurrent, newContext = item.apply(current, contexts)
                 yield from navigate(newCurrent, path[1:], newContext)
