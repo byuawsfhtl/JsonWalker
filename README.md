@@ -45,31 +45,34 @@ JsonWalker has its own syntax for the path provided for walking through nested j
 
 Below are the symbols used and some example usages
 
-|   Symbol	|   Meaning	|
-|------|------|
-|   \|	|   A path divider, used to organize path sections	|
-|   \[	|   The beginning of an index specification |
-|   \]	|   The end of an index specification	|
-|   \:	|   Index range indicator	|
-|   \(	|   The beginning of a default specification	|
-|   \)	|   The end of a default specification 	|
-|   \; 	|   Used to separate a default value and its type	|
-|   \,	|   The delimiter for the multi item return syntax	|
-|   \>	|   A continuing symbol for the multi item return syntax that works much like \|	|
-|   \^	|   Raises the current item as a context of the path	|
-|   \*  |  The wildcard symbol for the index specification      |
+| Symbol | Meaning                                                                      |
+| ------ | ---------------------------------------------------------------------------- |
+| \|     | A path divider, used to organize path sections                               |
+| \[     | The beginning of an index specification                                      |
+| \]     | The end of an index specification                                            |
+| \:     | Index range indicator                                                        |
+| \(     | The beginning of a default specification                                     |
+| \)     | The end of a default specification                                           |
+| \;     | Used to separate a default value and its type                                |
+| \,     | The delimiter for the multi item return syntax                               |
+| \>     | A continuing symbol for the multi item return syntax that works much like \| |
+| \^     | Raises the current item as a context of the path                             |
+| \*     | The wildcard symbol for the index and dict iteration specifications          |
+| \{     | The beginning of a dict iteration specifictation                             |
+| \}     | The end of a dict iteration specifictation                                   |
 
 ### Examples
 
 #### Simple
+
 ```json
 {
-    "key1": [
-        {
-            "key2": 100
-        },
-        {}
-    ]
+  "key1": [
+    {
+      "key2": 100
+    },
+    {}
+  ]
 }
 ```
 
@@ -78,12 +81,14 @@ The following path can be used to iterate through the json, getting the 'key2' v
 `'key1[*]^ | key2(-1;int)'`
 
 It would be called as such
+
 ```python
 for key1Val, key2 in walk(json, 'key1[*]^ | key2(-1;int)'):
     print(key2)
 ```
 
 and would output
+
 ```cmd
 100
 -1
@@ -110,14 +115,15 @@ The key 'key2' is accessed, returning the value at that spot in the current dict
 If 'key2' is not a key in the dictionary, then the default specification `'(-1;int)'` is used. In this case, it returns -1 when 'key2' does not exist.
 
 #### Multi Item Return
+
 ```json
 {
-    "key1": {
-        "key2": {
-            "item1": "hello",
-            "item2": "world"
-        },
+  "key1": {
+    "key2": {
+      "item1": "hello",
+      "item2": "world"
     }
+  }
 }
 ```
 
@@ -126,30 +132,33 @@ The following path would iterate through the json, returning item1 and item2 as 
 `'key1^ | key2 | item1, item2'`
 
 It would be called as such
+
 ```python
 for context, item1, item2 in walk(json, 'key1^ | key2 | item1, item2'):
     print(item1 + " " + item2)
 ```
 
 and would output
+
 ```cmd
 hello world
 ```
 
 #### Range specification
+
 ```json
 {
-    "key1": [
-        {
-            "item": "do not want"
-        },
-        {
-            "item": "hello"
-        },
-        {
-            "item": "world"
-        }
-    ]
+  "key1": [
+    {
+      "item": "do not want"
+    },
+    {
+      "item": "hello"
+    },
+    {
+      "item": "world"
+    }
+  ]
 }
 ```
 
@@ -158,31 +167,34 @@ The following path would iterate through the json, only looking in the given ran
 `'key1[1:*] | item'`
 
 It would be called as such
+
 ```python
 for item in walk(json, 'key1[1:*] | item'):
     print(item)
 ```
 
 and would output
+
 ```cmd
 hello
 world
 ```
 
 #### Multi Value Continue
+
 ```json
 {
-    "key1": {
-        "key2": {
-            "item1": "hello"
-        },
-        "key3": {
-            "item2": "world"
-        },
-        "key4": {
-            "item4": "not accessing"
-        }
+  "key1": {
+    "key2": {
+      "item1": "hello"
+    },
+    "key3": {
+      "item2": "world"
+    },
+    "key4": {
+      "item4": "not accessing"
     }
+  }
 }
 ```
 
@@ -191,6 +203,7 @@ The following path would iterate through the json, returing the three different 
 `'key1 | key2 > item1(''), key3 > item2(''), key4 > item3('')'`
 
 It would be called as such
+
 ```python
 for item1, item2, item3 in walk(json, 'key1 | key2 > item1(''), key3 > item2(''), key4 > item3('')'):
     print(item1)
@@ -199,6 +212,7 @@ for item1, item2, item3 in walk(json, 'key1 | key2 > item1(''), key3 > item2('')
 ```
 
 and would output
+
 ```cmd
 hello
 world
@@ -221,8 +235,53 @@ Each section does the following:
 
 Accesses the key before the >, accesses the key following the > on the item retrieved before the > and returns the default if the key does not exist on the previous item.
 
+#### Dict Iteration
+
+```json
+{
+  "key1": {
+    "key2": "value2",
+    "key3": "value3",
+    "key4": "value4"
+  }
+}
+```
+
+The following path would iterate through the json, returning the key as a context and the value as a value
+
+`'key1{*}'`
+
+It would be called as such
+
+```python
+for key, value in walk(json, 'key1{*}'):
+    print(f"{key} -- {value}")
+```
+
+and would output
+
+```cmd
+key2 -- value2
+key3 -- value3
+key4 -- value4
+```
+
+##### Path Explanation
+
+First Part:
+`'key1'`
+
+The given json is accessed at key1
+
+Second Part:
+`'{*}'`
+
+The value at `'key1'` is iterated through, puting the key in the context list and the value as the current value
+
 #### Involved Example and Demonstration of use benefits
+
 Old Python Code
+
 ```python
 persons = arkInfo.get('persons', [])
 familyId = ''
@@ -259,8 +318,8 @@ for person in persons:
                     isHead = False
                 arkPerson = person
                 familyId = ark
-                return headTuple(ark=ark, arkPerson=arkPerson, isHead=isHead, headID=headID, familyId=familyId)   
-            
+                return headTuple(ark=ark, arkPerson=arkPerson, isHead=isHead, headID=headID, familyId=familyId)
+
 if persons:
     arkPerson = persons[0]
     headID = arkPerson.get('id', '')
@@ -273,6 +332,7 @@ if persons:
 ```
 
 With JsonWalker
+
 ```python
 for person, headID, href in walk(arkInfo, 'persons[*]^ | id, links > persona > href('';str)'):
     for _, labelID in walk(person, 'names[*]^ | nameForms[*] | parts[*] | fields[*] | values[*] | labelId('';str)'):
@@ -285,7 +345,7 @@ for person, headID, href in walk(arkInfo, 'persons[*]^ | id, links > persona > h
             isHead = False
         familyId = ark
         return headTuple(ark=ark, arkPerson=arkPerson, isHead=isHead, headID=headID, familyId=familyId)
-        
+
     for _, text in walk(person, "fields[*]^  | values[*] | text('';str)"):
         if 'Head' not in text and 'Глава' not in text: #'Глава' is head in russian
             continue
@@ -295,7 +355,7 @@ for person, headID, href in walk(arkInfo, 'persons[*]^ | id, links > persona > h
             isHead = False
         arkPerson = person
         familyId = ark
-        return headTuple(ark=ark, arkPerson=arkPerson, isHead=isHead, headID=headID, familyId=familyId) 
+        return headTuple(ark=ark, arkPerson=arkPerson, isHead=isHead, headID=headID, familyId=familyId)
 
 familyId = ''
 for person, href in walk(arkInfo, 'persons[0]^|links|persona|href'):
@@ -308,13 +368,16 @@ for person, href in walk(arkInfo, 'persons[0]^|links|persona|href'):
 ```
 
 ## Some Constraints
+
 1. Indexes must be in the form [n] or [n:m]
 2. Defaults must be in the form (value;type)
-3. MultiValues must be in the form value1, value2, value3
+3. MultiValues must be in the form value1, value2, ...
 4. The MultiValue must be the last path in the string
 5. The MultiValue must not contain a path divider, it instead uses a comma for separation and a greater than sign for continuation
 6. The MultiValue must not contain another MultiValue
 7. The Index must have a specific index if it is used in a MultiValue
-8. In order to iterate through a list, a index/range must be specified
-9. The Default must contain a type if it is used in a MultiValue, unless it is a string
-10. Items leave the generator in this order, where their internal order is specified by order in the path: Contexts, Values
+8. The MultiValue must not contain a DictIter or an Index with a wildcard
+9. In order to iterate through a list, a index/range must be specified
+10. The Default must contain a type
+11. Items leave the generator in this order, where their internal order is specified by order in the path: Contexts, Values
+12. DictIters must be {\*}
