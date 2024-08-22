@@ -99,7 +99,7 @@ def walk(jsonData: dict | list, path: str | list[PathItem]) -> Generator[any, an
                 yield newContext + values
             elif isinstance(item, Index):
                 # In order to iterate through a list, a range must be specified
-                assert isinstance(current, list), "Index can only be used on a list"
+                assert isinstance(current, list), f"Index can only be used on a list, not {current}"
                 newCurrent, newContext = item.apply(current, contexts)
                 if isinstance(newCurrent, list):
                     for value in newCurrent:
@@ -107,7 +107,7 @@ def walk(jsonData: dict | list, path: str | list[PathItem]) -> Generator[any, an
                 else:
                     yield from navigate(newCurrent, path[1:], newContext)
             elif isinstance(item, DictIter):
-                assert isinstance(current, dict), "DictIter can only be used on a dictionary"
+                assert isinstance(current, dict), f"DictIter can only be used on a dictionary, not {current}"
                 newCurrent, newContext = item.apply(current, contexts)
                 for key, value in newCurrent.items():
                     yield from navigate(value, path[1:], newContext + [key])
