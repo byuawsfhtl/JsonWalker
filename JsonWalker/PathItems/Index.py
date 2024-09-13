@@ -116,9 +116,6 @@ class Index(PathItem):
 
         self.start = self._handleNegativeIndex(current, self.start)
         self.end = self._handleNegativeIndex(current, self.end)
-
-        if self._notInRange(self.start, current) or self._notInRange(self.end, current):
-            return None
         
         return current[self.start:self.end]
     
@@ -132,11 +129,7 @@ class Index(PathItem):
         Returns:
             bool: True if the index is out of range, False otherwise
         """
-        try:
-            current[index]
-            return False
-        except:
-            return True
+        return index >= len(current) or index < 0
     
     def _handleNegativeIndex(self, current: list, index: int) -> int:
         """Handle negative indexes by converting them to positive indexes.
