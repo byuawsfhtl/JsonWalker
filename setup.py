@@ -1,6 +1,6 @@
 import setuptools
 import os
-from _version import __version__ as version
+from JsonWalker._version import __version__ as version
 
 APP_NAME = "JsonWalker"
 
