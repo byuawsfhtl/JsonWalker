@@ -1,6 +1,6 @@
 # JsonWalker
 
-_Allows simple, quick, and easy use of nested JSON with a fluent object-oriented parsing tool to avoid hours of pain_
+_Allows simple, quick, and easy parsing of nasty nested JSON through a fluent object-oriented tool to avoid hours of pain_
 
 JsonWalker's goal is to allow users to specify a path through nested JSON using a chainable, discoverable API, and get the items at each match in the JSON. The library uses generators to efficiently traverse large data structures.
 
