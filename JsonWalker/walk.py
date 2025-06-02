@@ -306,7 +306,7 @@ class MultiValue(JsonPath):
 
         Args:
             current (Any): the current value being evaluated
-            _ (list[JsonPath]): unused; MultiValue is terminal
+            _ (list[JsonPath]): unused because multivalue is terminal
             contexts (list[Any]): the current context stack
 
         Yields:
