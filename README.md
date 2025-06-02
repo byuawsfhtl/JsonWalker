@@ -56,6 +56,96 @@ name = next(path.walk(data))
 
 The next function is a Python function that gets the "next" value in the generator, and can be called multiple times in a row if desired.
 
+## Quick Start Examples
+
+Here are some practical examples to get you started quickly:
+
+### Example 1: Simple Key Access with Defaults
+
+```python
+from JsonWalker.walk import JsonPath
+
+# Sample data with missing keys
+data = {
+    "key1": [
+        {
+            "key2": 100
+        },
+        {}  # This is missing key2
+    ]
+}
+
+path = JsonPath().key("key1").listAll().addContext().key("key2", default=-1)
+for valOfKey1, key2 in path.walk(data):
+    print(f"valOfKey1: {valOfKey1}, key2: {key2}")
+```
+
+Output:
+```
+valOfKey1: {'key2': 100}, key2: 100
+valOfKey1: {}, key2: -1
+```
+
+### Example 2: Multi-Value Return
+
+```python
+from JsonWalker.walk import JsonPath
+
+# Sample data
+data = {
+    "key1": {
+        "key2": {
+            "itemA": "hello",
+            "itemB": "world",
+            "itemC": "I use Arch, by the way"  # Nobody wants this
+        }
+    }
+}
+
+path = JsonPath().key("key1").addContext().key("key2").multi(
+    JsonPath().key("itemA"),
+    JsonPath().key("itemB")
+)
+
+# If you removed .addContext(), key1Context would not be part of this line
+# and everything else would stay the same
+for key1Context, itemA, itemB in path.walk(data):
+    print(f"{itemA} {itemB}!")
+    print(key1Context)
+```
+
+Output:
+```
+hello world
+{'key2': {'itemA': 'hello', 'itemB': 'world', 'itemC': 'I use Arch, by the way'}}
+```
+
+### Example 3: Dictionary Iteration
+
+```python
+from JsonWalker.walk import JsonPath
+
+# Sample data
+data = {
+    "key1": {
+        "key2": "value2",
+        "key3": "value3",
+        "key4": "value4"
+    }
+}
+
+path = JsonPath().key("key1").keyContextAndValue()
+for key, value in path.walk(data):
+    print(f"{key} -- {value}")
+```
+
+Output:
+```
+key2 -- value2
+key3 -- value3
+key4 -- value4
+```
+
 ## Understanding Context
 
 **Context** is one of JsonWalker's most powerful features. It allows you to collect and preserve intermediate values as you traverse through nested JSON structures.
