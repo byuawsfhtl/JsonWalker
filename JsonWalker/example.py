@@ -1,4 +1,4 @@
-from JsonWalker.walk import jsonPath
+from JsonWalker.walk import JsonPath
 
 # Usage examples
 if __name__ == "__main__":
@@ -12,7 +12,7 @@ if __name__ == "__main__":
             {}
         ]
     }
-    path = jsonPath().key("key1").all().addContext().key("key2", default=-1)
+    path = JsonPath().key("key1").listAll().addContext().key("key2", default=-1)
     for valOfKey1, key2 in path.walk(data):
         print(f"valOfKey1: {valOfKey1}, key2: {key2}")
     print('--------------------------------------')
@@ -28,9 +28,9 @@ if __name__ == "__main__":
             }
         }
     }
-    path = jsonPath().key("key1").addContext().key("key2").multi(
-        jsonPath().key("item1"),
-        jsonPath().key("item2")
+    path = JsonPath().key("key1").addContext().key("key2").multi(
+        JsonPath().key("item1"),
+        JsonPath().key("item2")
     )    
     for context, item1, item2 in path.walk(data2):
         print(f"{item1} {item2}")
@@ -46,6 +46,7 @@ if __name__ == "__main__":
             "key4": "value4"
         }
     }
-    path = jsonPath().key("key1").items()
+    path = JsonPath().key("key1").keyContextAndValue()
     for key, value in path.walk(data3):
         print(f"{key} -- {value}")
+    print('--------------------------------------')

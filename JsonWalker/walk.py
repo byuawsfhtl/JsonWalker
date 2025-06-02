@@ -83,7 +83,7 @@ class JsonPath:
         """
         return Key(keyName, default, self)
 
-    def index(self, idx: int) -> "Index":
+    def listIndex(self, idx: int) -> "Index":
         """Creates a path segment that accesses a specific index in a list.
 
         Args:
@@ -94,7 +94,7 @@ class JsonPath:
         """
         return Index(idx, self)
 
-    def slice(self, start: Optional[int] = None, end: Optional[int] = None) -> "Slice":
+    def listSlice(self, start: Optional[int] = None, end: Optional[int] = None) -> "Slice":
         """Creates a path segment that accesses a range of elements in a list.
 
         Args:
@@ -106,7 +106,7 @@ class JsonPath:
         """
         return Slice(start, end, self)
 
-    def all(self) -> "Slice":
+    def listAll(self) -> "Slice":
         """Creates a path segment that accesses all elements in a list.
 
         Returns:
@@ -114,23 +114,23 @@ class JsonPath:
         """
         return Slice(None, None, self)
 
-    def items(self) -> "DictItems":
+    def keyContextAndValue(self) -> "KeyContextAndValue":
         """Creates a path segment that iterates through all key-value pairs in a dictionary.
         The keys are appended to the context, and the values are passed on to the next segment.
 
         Returns:
             DictItems: a `JsonPath` segment for dictionary iteration
         """
-        return DictItems(self)
+        return KeyContextAndValue(self)
 
-    def addContext(self) -> "AdditionalContext":
+    def addContext(self) -> "AddedContext":
         """Creates a path segment that adds the current value to the context.
         Useful for collecting intermediate values during path evaluation.
 
         Returns:
             AdditionalContext: a `JsonPath` segment that augments the context with the current value
         """
-        return AdditionalContext(self)
+        return AddedContext(self)
 
     def multi(self, *paths: 'JsonPath') -> "MultiValue":
         """Creates a path segment that collects multiple values from different sub-paths
@@ -190,7 +190,7 @@ class Index(JsonPath):
             prevPath (Optional[JsonPath]): the preceding path segment. Defaults to None
         """
         super().__init__(prevPath)
-        self.index = index
+        self.listIndex = index
 
     def _apply(self, current: Any, remainingPath: list[JsonPath], contexts: list[Any]) -> Generator[Any, None, None]:
         """Apply index access to the current value if it's a list.
@@ -204,7 +204,7 @@ class Index(JsonPath):
             Any: results from traversing the value at the given index
         """
         if isinstance(current, list):
-            idx = self.index if self.index >= 0 else len(current) + self.index
+            idx = self.listIndex if self.listIndex >= 0 else len(current) + self.listIndex
             if 0 <= idx < len(current):
                 yield from self._traverse(current[idx], remainingPath, contexts)
         else:
@@ -250,7 +250,7 @@ class Slice(JsonPath):
             yield from self._traverse(current, remainingPath, contexts)
 
 
-class DictItems(JsonPath):
+class KeyContextAndValue(JsonPath):
     """Path element that iterates through all dictionary key-value pairs."""
 
     def _apply(self, current: Any, remainingPath: list[JsonPath], contexts: list[Any]) -> Generator[Any, None, None]:
@@ -271,7 +271,7 @@ class DictItems(JsonPath):
             yield from self._traverse(current, remainingPath, contexts)
 
 
-class AdditionalContext(JsonPath):
+class AddedContext(JsonPath):
     """Path element that adds the current value to the context."""
 
     def _apply(self, current: Any, remainingPath: list[JsonPath], contexts: list[Any]) -> Generator[Any, None, None]:
@@ -314,12 +314,3 @@ class MultiValue(JsonPath):
         """
         values = [list(path.walk(current))[0] for path in self.paths if list(path.walk(current))]
         yield contexts + values
-
-
-def jsonPath() -> JsonPath:
-    """Start a new JSON path query chain.
-
-    Returns:
-        JsonPath: a root JsonPath object
-    """
-    return JsonPath()
