@@ -1,4 +1,4 @@
-from JsonWalker.PathItems.DictIter import DictIter
+from JsonWalker.Legacy.PathItems.DictIter import DictIter
 from .PathItem import PathItem
 from .Index import Index
 from .Constants import MULTI_START, PATH_DIVIDER
@@ -11,7 +11,7 @@ class MultiValue(PathItem):
         Args:
             multiStr (str): a string of paths separated by MULTI_START
         """
-        from JsonWalker.walk import pathParse
+        from JsonWalker.Legacy.walk import pathParse
         self.multi = self._stripMulti(multiStr)
         self.paths = [pathParse(mult) for mult in self.multi]
         for path in self.paths:
