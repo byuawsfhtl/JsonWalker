@@ -71,19 +71,19 @@ data = {
         {
             "key2": 100
         },
-        {}  # This is missing key2
+        {}  # key2 is missing here, so contextOfKey1 will be blank, and the default value for key2 will be used
     ]
 }
 
 path = JsonPath().key("key1").listAll().addContext().key("key2", default=-1)
-for valOfKey1, key2 in path.walk(data):
-    print(f"valOfKey1: {valOfKey1}, key2: {key2}")
+for contextOfKey1, key2 in path.walk(data):
+    print(f"contextOfKey1: {contextOfKey1}, valueOfKey2: {key2}")
 ```
 
 Output:
 ```
-valOfKey1: {'key2': 100}, key2: 100
-valOfKey1: {}, key2: -1
+contextOfKey1: {'key2': 100}, valueOfKey2: 100
+contextOfKey1: {}, valueOfKey2: -1
 ```
 
 ### Example 2: Multi-Value Return
@@ -116,7 +116,7 @@ for key1Context, itemA, itemB in path.walk(data):
 
 Output:
 ```
-hello world
+hello world!
 {'key2': {'itemA': 'hello', 'itemB': 'world', 'itemC': 'I use Arch, by the way'}}
 ```
 
@@ -161,12 +161,14 @@ key4 -- value4
 ### Context Collection Methods
 
 - `.addContext()` - Adds the current value to the context before continuing
-- `.keyContextAndValue()` - When iterating through dictionary items, adds each key to the context
+- `.keyContextAndValue()` - When iterating through dictionary items, adds just the key's string to the context, rather than the whole dictionary object
 - `.multi()` - Collects values from multiple sub-paths and includes them in the result
 
 ### Simple Context Example
 
 ```python
+from JsonWalker.walk import JsonPath
+
 data = {
     "users": [
         {"name": "John", "age": 30},
@@ -177,12 +179,22 @@ data = {
 # Without context - just get names
 path = JsonPath().key("users").listAll().key("name")
 for name in path.walk(data):
-    print(name)  # "John", "Jane"
+    print(name)
+print()
 
 # With context - get both user object and name
 path = JsonPath().key("users").listAll().addContext().key("name")
 for user, name in path.walk(data):
-    print(f"{name} has age {user['age']}")  # "John has age 30", "Jane has age 25"
+    print(f"{name} has age {user['age']}")
+```
+
+Output
+```
+John
+Jane
+
+John has age 30
+Jane has age 25
 ```
 
 ## API Reference
@@ -206,7 +218,7 @@ JsonWalker uses a fluent, chainable API that makes queries self-documenting and 
 | `.listAll()` | Access all items in a list | `.listAll()` |
 | `.keyContextAndValue()` | Iterate through key-value pairs of dictionaries, adding keys to context | `.keyContextAndValue()` |
 | `.addContext()` | Add the current value to the context before continuing | `.addContext()` |
-| `.multi(*paths)` | Create diverging paths from the current context, each returning their own values | `.multi(path1, path2)` |
+| `.multi(*paths)` | Create diverging paths from the current context, returning all possible combinations of values | `.multi(path1, path2)` |
 
 ## Complete Examples
 
@@ -228,8 +240,14 @@ data = {
 # Access user's name
 path = JsonPath().key("user").key("name")
 for name in path.walk(data):
-    print(name)  # Output: John
+    print(name)
 ```
+
+Output
+```
+John
+```
+
 
 ### List Iteration with Context
 
@@ -263,21 +281,35 @@ from JsonWalker.walk import JsonPath
 
 # Sample data
 data = {
-    "user": {
-        "profile": {
-            "firstName": "John",
-            "lastName": "Doe"
+    "users": [
+        {
+            "profile": {
+                "firstName": "John",
+                "lastName": "Doe"
+            }
+        },
+        {
+            "profile": {
+                "firstName": "Kaladin",
+                "lastName": "Stormblessed"
+            }
         }
-    }
+    ]
 }
 
 # Get both first and last name in one query
-path = JsonPath().key("user").key("profile").multi(
+path = JsonPath().key("users").listAll().key("profile").multi(
     JsonPath().key("firstName"),
     JsonPath().key("lastName")
 )
 for firstName, lastName in path.walk(data):
-    print(f"{firstName} {lastName}")  # Output: John Doe
+    print(f"{firstName} {lastName}")
+```
+
+Output
+```
+John Doe
+Kaladin Stormblessed
 ```
 
 ### Dictionary Iteration with Context
@@ -314,23 +346,31 @@ from JsonWalker.walk import JsonPath
 
 # Sample data
 data = {
-    "numbers": [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
+    "numbers": [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]
 }
 
 # Get numbers from index 2 to 5 (exclusive)
+list1 = []
 path = JsonPath().key("numbers").listSlice(2, 6)
 for num in path.walk(data):
-    print(num)  # Output: 3, 4, 5, 6
-
-print("---")
+    list1.append(num)
+print(list1)
 
 # Get the last 3 numbers
+list2 = []
 path = JsonPath().key("numbers").listSlice(-3, None)
 for num in path.walk(data):
-    print(num)  # Output: 8, 9, 10
+    list2.append(num)
+print(list2)
 ```
 
-### Complex Nested Data with Multiple Contexts
+Output
+```
+[2, 3, 4, 5]
+[7, 8, 9]
+```
+
+### Complex Nested Data with Added Context
 
 ```python
 from JsonWalker.walk import JsonPath
@@ -362,14 +402,14 @@ path = (JsonPath()
     .addContext()  # Keep department info in context
     .key("employees")
     .listAll()
-    .addContext()  # Keep employee info in context
     .multi(
         JsonPath().key("name"),
         JsonPath().key("skills").listAll()
     )
 )
 
-for dept, employee, name, skill in path.walk(data):
+# The whole department dictionary is stored as context, which is why we can access its 'name' key
+for dept, name, skill in path.walk(data):
     print(f"{name} from {dept['name']} knows {skill}")
 ```
 
@@ -447,7 +487,12 @@ for person, person_id, href in person_path.walk(apiResponse):
     
     for labelID in label_path.walk(person):
         if 'PR' in labelID and 'FTHR' not in labelID and 'MTHR' not in labelID:
-            print(f"  Found person {person_id} with label {labelID}")
+            print(f"Found person {person_id} with label {labelID}")
+```
+
+Output
+```
+Found person 123 with label PR_GIVEN
 ```
 
 ### Using Single Values with next()
@@ -466,12 +511,18 @@ data = {
 # Get just the first user's name
 path = JsonPath().key("users").listIndex(0).key("name")
 result = next(path.walk(data))
-print(f"First user's name: {result}")  # Output: First user's name: John
+print(f"First user's name: {result}")
 
 # Get the last user's age
 path = JsonPath().key("users").listIndex(-1).key("age")
 result = next(path.walk(data))
-print(f"Last user's age: {result}")  # Output: Last user's age: 25
+print(f"Last user's age: {result}")
+```
+
+Output:
+```
+First user's name: John
+Last user's age: 25
 ```
 
 ### Handling Missing Keys with Defaults
@@ -505,11 +556,10 @@ Jane is -1 years old
 unknown_name is 40 years old
 ```
 
-### Advanced Context Example: Collecting Parent Information
-
+### Real World Example: Two different paths
+As you can see in the data below, the subcategory of electronics contains multiple sections, which have the items we are looking for.
+On the other hand, the subcategory of books does NOT have any sections, and just contains the books themselves. This is a great example of how real world data can be messy, but consistent. On the bright side, JsonWalker can handle this with two different paths.
 ```python
-from JsonWalker.walk import JsonPath
-
 # Sample data with nested categories
 data = {
     "categories": {
@@ -518,43 +568,37 @@ data = {
                 "laptops": ["MacBook", "ThinkPad", "Dell XPS"],
                 "desktops": ["iMac", "HP Pavilion"]
             },
-            "phones": ["iPhone", "Samsung Galaxy"]
+            "phones": {
+                "smartphones": ["iPhone", "Samsung Galaxy"]
+            }
         },
-        "books": {
-            "fiction": ["1984", "To Kill a Mockingbird"],
-            "non-fiction": ["Sapiens", "Educated"]
-        }
+        "books": ["The Way of Kings", "To Kill a Mockingbird", "Dragonsbane", "Number the Stars"]
     }
 }
 
-# Get all products with their full category path
-path = (JsonPath()
-    .key("categories")
-    .keyContextAndValue()  # Add "electronics", "books" to context
-    .addContext()  # Add the category object to context
-    .keyContextAndValue()  # Add "computers", "phones", "fiction", "non-fiction" to context
-    .addContext()  # Add the subcategory object to context
-    .keyContextAndValue()  # Add "laptops", "desktops", etc. to context
-    .listAll()  # Get each individual product
-)
+path = JsonPath().key('categories').key('electronics').keyContextAndValue().keyContextAndValue().listAll()
+for subcategory, section, item in path.walk(data):
+    print(item)
 
-for main_cat, cat_obj, sub_cat, subcat_obj, product_type, product in path.walk(data):
-    print(f"{product} -> {main_cat}/{sub_cat}/{product_type}")
+path = JsonPath().key('categories').key('books').listAll()
+for item in path.walk(data):
+    print(item)
+
 ```
 
 Output:
 ```
-MacBook -> electronics/computers/laptops
-ThinkPad -> electronics/computers/laptops
-Dell XPS -> electronics/computers/laptops
-iMac -> electronics/computers/desktops
-HP Pavilion -> electronics/computers/desktops
-iPhone -> electronics/phones
-Samsung Galaxy -> electronics/phones
-1984 -> books/fiction
-To Kill a Mockingbird -> books/fiction
-Sapiens -> books/non-fiction
-Educated -> books/non-fiction
+MacBook
+ThinkPad
+Dell XPS
+iMac
+HP Pavilion
+iPhone
+Samsung Galaxy
+The Way of Kings
+To Kill a Mockingbird
+Dragonsbane
+Number the Stars
 ```
 
 ## Key Features

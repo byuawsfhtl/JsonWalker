@@ -1,3 +1,4 @@
+import itertools
 from typing import Generator, Any, Optional
 
 class JsonPath:
@@ -156,7 +157,7 @@ class Key(JsonPath):
             prevPath (Optional[JsonPath]): the preceding path segment; defaults to None
         """
         super().__init__(prevPath)
-        self.key = key
+        self.dictKey = key
         self.default = default
 
     def _apply(self, current: Any, remainingPath: list[JsonPath], contexts: list[Any]) -> Generator[Any, None, None]:
@@ -173,7 +174,7 @@ class Key(JsonPath):
             Any: results from traversing the matched value
         """
         if isinstance(current, dict):
-            value = current.get(self.key, self.default)
+            value = current.get(self.dictKey, self.default)
             yield from self._traverse(value, remainingPath, contexts)
         else:
             yield from self._traverse(current, remainingPath, contexts)
@@ -190,7 +191,7 @@ class Index(JsonPath):
             prevPath (Optional[JsonPath]): the preceding path segment. Defaults to None
         """
         super().__init__(prevPath)
-        self.listIndex = index
+        self.index = index
 
     def _apply(self, current: Any, remainingPath: list[JsonPath], contexts: list[Any]) -> Generator[Any, None, None]:
         """Apply index access to the current value if it's a list.
@@ -204,7 +205,7 @@ class Index(JsonPath):
             Any: results from traversing the value at the given index
         """
         if isinstance(current, list):
-            idx = self.listIndex if self.listIndex >= 0 else len(current) + self.listIndex
+            idx = self.index if self.index >= 0 else len(current) + self.index
             if 0 <= idx < len(current):
                 yield from self._traverse(current[idx], remainingPath, contexts)
         else:
@@ -290,27 +291,34 @@ class AddedContext(JsonPath):
 
 class MultiValue(JsonPath):
     """Path element that collects values from multiple sub-paths."""
-
+    
     def __init__(self, paths: tuple[JsonPath], prevPath: Optional[JsonPath] = None) -> None:
         """Initiates the multivalue path.
-
+        
         Args:
             paths (tuple[JsonPath]): a tuple of sub-paths to evaluate from the current value
             prevPath (Optional[JsonPath]): the preceding path segment. Defaults to None
         """
         super().__init__(prevPath)
         self.paths = paths
-
+    
     def _apply(self, current: Any, _: list[JsonPath], contexts: list[Any]) -> Generator[Any, None, None]:
         """Evaluate each sub-path from the current value and yield combined context + results.
-
+        
         Args:
             current (Any): the current value being evaluated
             _ (list[JsonPath]): unused because multivalue is terminal
             contexts (list[Any]): the current context stack
-
+        
         Yields:
             list[Any]: the context list followed by the results from each sub-path
         """
-        values = [list(path.walk(current))[0] for path in self.paths if list(path.walk(current))]
-        yield contexts + values
+        # Collect all results from each sub-path
+        all_results = []
+        for path in self.paths:
+            path_results = list(path.walk(current))
+            all_results.append(path_results)
+        
+        # Create Cartesian product of all sub-path results
+        for combination in itertools.product(*all_results):
+            yield contexts + list(combination)
