@@ -1,8 +1,8 @@
 # JsonWalker
 
-_Allows simple, quick, and easy use of nested Json_
+_Allows simple, quick, and easy parsing of nasty nested JSON through a fluent object-oriented tool to avoid hours of pain_
 
-JsonWalker's goal is to allow the user to specify a path through nested json, and get the items at each match in the json. Currently, it only outputs generators.
+JsonWalker's goal is to allow users to specify a path through nested JSON using a chainable, discoverable API, and get the items at each match in the JSON. The library uses generators to efficiently traverse large data structures.
 
 ## Installation
 
@@ -10,7 +10,7 @@ JsonWalker is a pip installable package. It is a public package, and will thus n
 
 ### Command Line Installation
 
-To install from the command line, `pip install git+https://github.com/byuawsfhtl/JsonWalker.git`.
+To install from the command line, simply do `pip install JsonWalker`.
 
 ### Use in other pip packages
 
@@ -20,364 +20,609 @@ As this is a public package, it can be added to the required packages of any pip
 
 To use this in a project, install using one of the installation methods shown above.
 
-Import the walk command into your file: `from JsonWalker.walk import walk`
+Import the JsonPath class into your file: `from JsonWalker.walk import JsonPath`
 
 As the walk command makes a generator, it can be used in multiple ways.
+
+```json
+{
+  'users': [
+    {
+      'name': 'samantha',
+      'points': 2394729
+    },
+    {
+      'name': 'john',
+      'points': 2392987
+    }
+  ]
+}
+```
 
 ### Use in a for loop
 
 ```python
-for context1, context2, item1, item2 in walk(json, path):
+path = JsonPath().key("users").listAll().key("name")
+for name in path.walk(data):
     ...
 ```
 
 ### Use outside of a for loop
 
 ```python
-context1, context2, item1, item2 = next(walk(json, path))
+path = JsonPath().key("users").listAll().key("name")
+name = next(path.walk(data))
 ```
 
-The next function is a python function that gets the "next" value in the generator, and can be called multiple times in a row if desired.
+The next function is a Python function that gets the "next" value in the generator, and can be called multiple times in a row if desired.
 
-## Paths
+## Quick Start Examples
 
-JsonWalker has its own syntax for the path provided for walking through nested json.
+Here are some practical examples to get you started quickly:
 
-Below are the symbols used and some example usages
-
-| Symbol | Meaning                                                                      |
-| ------ | ---------------------------------------------------------------------------- |
-| \|     | A path divider, used to organize path sections                               |
-| \[     | The beginning of an index specification                                      |
-| \]     | The end of an index specification                                            |
-| \:     | Index range indicator                                                        |
-| \(     | The beginning of a default specification                                     |
-| \)     | The end of a default specification                                           |
-| \;     | Used to separate a default value and its type                                |
-| \,     | The delimiter for the multi item return syntax                               |
-| \>     | A continuing symbol for the multi item return syntax that works much like \| |
-| \^     | Raises the current item as a context of the path                             |
-| \*     | The wildcard symbol for the index and dict iteration specifications          |
-| \{     | The beginning of a dict iteration specifictation                             |
-| \}     | The end of a dict iteration specifictation                                   |
-
-### Examples
-
-#### Simple
-
-```json
-{
-  "key1": [
-    {
-      "key2": 100
-    },
-    {}
-  ]
-}
-```
-
-The following path can be used to iterate through the json, getting the 'key2' value out and raising the current key1 item as a context
-
-`'key1[*]^ | key2(-1;int)'`
-
-It would be called as such
+### Example 1: Simple Key Access with Defaults
 
 ```python
-for key1Val, key2 in walk(json, 'key1[*]^ | key2(-1;int)'):
-    print(key2)
+from JsonWalker.walk import JsonPath
+
+# Sample data with missing keys
+data = {
+    "key1": [
+        {
+            "key2": 100
+        },
+        {}  # key2 is missing here, so contextOfKey1 will be blank, and the default value for key2 will be used
+    ]
+}
+
+path = JsonPath().key("key1").listAll().addContext().key("key2", default=-1)
+for contextOfKey1, key2 in path.walk(data):
+    print(f"contextOfKey1: {contextOfKey1}, valueOfKey2: {key2}")
 ```
 
-and would output
-
-```cmd
-100
--1
+Output:
+```
+contextOfKey1: {'key2': 100}, valueOfKey2: 100
+contextOfKey1: {}, valueOfKey2: -1
 ```
 
-with key1Val being the current item inside of the key1 list
+### Example 2: Multi-Value Return
 
-##### Path Breakdown
+```python
+from JsonWalker.walk import JsonPath
 
-First Part
-`'key1[*]^'`
-
-The key 'key1' is accessed, returning the inner list.
-
-Then, the index specifier tells JsonWalker to iterate over all values in the list.
-
-Finally, the current value in the iteration of the list is raised as a context.
-
-Second Part
-`'key2(-1;int)'`
-
-The key 'key2' is accessed, returning the value at that spot in the current dictionary.
-
-If 'key2' is not a key in the dictionary, then the default specification `'(-1;int)'` is used. In this case, it returns -1 when 'key2' does not exist.
-
-#### Multi Item Return
-
-```json
-{
-  "key1": {
-    "key2": {
-      "item1": "hello",
-      "item2": "world"
+# Sample data
+data = {
+    "key1": {
+        "key2": {
+            "itemA": "hello",
+            "itemB": "world",
+            "itemC": "I use Arch, by the way"  # Nobody wants this
+        }
     }
-  }
 }
+
+path = JsonPath().key("key1").addContext().key("key2").multi(
+    JsonPath().key("itemA"),
+    JsonPath().key("itemB")
+)
+
+# If you removed .addContext(), key1Context would not be part of this line
+# and everything else would stay the same
+for key1Context, itemA, itemB in path.walk(data):
+    print(f"{itemA} {itemB}!")
+    print(key1Context)
 ```
 
-The following path would iterate through the json, returning item1 and item2 as values, with the outer key1 dictionary as the context
+Output:
+```
+hello world!
+{'key2': {'itemA': 'hello', 'itemB': 'world', 'itemC': 'I use Arch, by the way'}}
+```
 
-`'key1^ | key2 | item1, item2'`
-
-It would be called as such
+### Example 3: Dictionary Iteration
 
 ```python
-for context, item1, item2 in walk(json, 'key1^ | key2 | item1, item2'):
-    print(item1 + " " + item2)
-```
+from JsonWalker.walk import JsonPath
 
-and would output
-
-```cmd
-hello world
-```
-
-#### Range specification
-
-```json
-{
-  "key1": [
-    {
-      "item": "do not want"
-    },
-    {
-      "item": "hello"
-    },
-    {
-      "item": "world"
+# Sample data
+data = {
+    "key1": {
+        "key2": "value2",
+        "key3": "value3",
+        "key4": "value4"
     }
-  ]
 }
-```
 
-The following path would iterate through the json, only looking in the given range of the key1 list, outputing the 'item' key values
-
-`'key1[1:*] | item'`
-
-It would be called as such
-
-```python
-for item in walk(json, 'key1[1:*] | item'):
-    print(item)
-```
-
-and would output
-
-```cmd
-hello
-world
-```
-
-#### Multi Value Continue
-
-```json
-{
-  "key1": {
-    "key2": {
-      "item1": "hello"
-    },
-    "key3": {
-      "item2": "world"
-    },
-    "key4": {
-      "item4": "not accessing"
-    }
-  }
-}
-```
-
-The following path would iterate through the json, returing the three different items that have diverging paths
-
-`'key1 | key2 > item1(''), key3 > item2(''), key4 > item3('')'`
-
-It would be called as such
-
-```python
-for item1, item2, item3 in walk(json, 'key1 | key2 > item1(''), key3 > item2(''), key4 > item3('')'):
-    print(item1)
-    print(item2)
-    print(item3)
-```
-
-and would output
-
-```cmd
-hello
-world
-
-```
-
-##### Path Explanation
-
-First Part
-`'key1'`
-
-The given json is accessed at the key1 key.
-
-Second Part
-`'key2 > item1('';str), key3 > item2('';str), key4 > item3('';str)'`
-
-This part of the path specifies three different return items, as shown by the 2 commas separating the three sections.
-
-Each section does the following:
-
-Accesses the key before the >, accesses the key following the > on the item retrieved before the > and returns the default if the key does not exist on the previous item.
-
-#### Dict Iteration
-
-```json
-{
-  "key1": {
-    "key2": "value2",
-    "key3": "value3",
-    "key4": "value4"
-  }
-}
-```
-
-The following path would iterate through the json, returning the key as a context and the value as a value
-
-`'key1{*}'`
-
-It would be called as such
-
-```python
-for key, value in walk(json, 'key1{*}'):
+path = JsonPath().key("key1").keyContextAndValue()
+for key, value in path.walk(data):
     print(f"{key} -- {value}")
 ```
 
-and would output
-
-```cmd
+Output:
+```
 key2 -- value2
 key3 -- value3
 key4 -- value4
 ```
 
-##### Path Explanation
+## Understanding Context
 
-First Part:
-`'key1'`
+**Context** is one of JsonWalker's most powerful features. It allows you to collect and preserve intermediate values as you traverse through nested JSON structures.
 
-The given json is accessed at key1
+### How Context Works
 
-Second Part:
-`'{*}'`
+- Context is a list that accumulates values as you traverse the JSON
+- When you reach the end of a path, you get back either:
+  - Just the final value (if no context was collected)
+  - A list containing `[context_values..., final_value]` (if context was collected)
+- Context is particularly useful when you need to know "where you came from" or want to collect multiple related values
 
-The value at `'key1'` is iterated through, puting the key in the context list and the value as the current value
+### Context Collection Methods
 
-#### Involved Example and Demonstration of use benefits
+- `.addContext()` - Adds the current value to the context before continuing
+- `.keyContextAndValue()` - When iterating through dictionary items, adds just the key's string to the context, rather than the whole dictionary object
+- `.multi()` - Collects values from multiple sub-paths and includes them in the result
 
-Old Python Code
-
-```python
-persons = arkInfo.get('persons', [])
-familyId = ''
-for person in persons:
-    for name in person.get('names', []):
-        for nameForms in name.get('nameForms', []):
-            for parts in nameForms.get('parts', []):
-                for fields in parts.get('fields', []):
-                    for value in fields.get('values', []):
-                        labelID: str = value.get('labelId', '')
-                        if 'PR' in labelID and 'FTHR' not in labelID and 'MTHR' not in labelID:
-                            arkPerson = person
-                            headID = person.get('id', '')
-                            personLinks = person.get('links', {})
-                            persona = personLinks.get('persona', {})
-                            href = persona.get('href', '')
-                            if ark not in href:
-                                hrefPersonaSplit = href.split('personas/')[1]
-                                familyId = hrefPersonaSplit.split('?flag')[0]
-                                isHead = False
-                            familyId = ark
-                            return headTuple(ark=ark, arkPerson=arkPerson, isHead=isHead, headID=headID, familyId=familyId)
-
-    for fields in person.get('fields', {}):
-        for values in fields.get('values', {}):
-            text = values.get('text', '')
-            if 'Head' in text or 'Глава' in text: #'Глава' is head in russian
-                personLinks = person.get('links', {})
-                persona = personLinks.get('persona', {})
-                href = persona.get('href', '')
-                if ark not in href:
-                    hrefPersonaSplit = href.split('personas/')[1]
-                    familyId = hrefPersonaSplit.split('?flag')[0]
-                    isHead = False
-                arkPerson = person
-                familyId = ark
-                return headTuple(ark=ark, arkPerson=arkPerson, isHead=isHead, headID=headID, familyId=familyId)
-
-if persons:
-    arkPerson = persons[0]
-    headID = arkPerson.get('id', '')
-    href = arkPerson.get('links', {}).get('persona', {}).get('href', '')
-    splitId = href.split('personas/')
-    if len(splitId) > 1:
-        familyId = splitId[1].split('?flag')[0]
-    else:
-        familyId = ark
-```
-
-With JsonWalker
+### Simple Context Example
 
 ```python
-for person, headID, href in walk(arkInfo, 'persons[*]^ | id, links > persona > href('';str)'):
-    for _, labelID in walk(person, 'names[*]^ | nameForms[*] | parts[*] | fields[*] | values[*] | labelId('';str)'):
-        if 'PR' not in labelID or 'FTHR' in labelID or 'MTHR' in labelID:
-            continue
-        arkPerson = person
-        if ark not in href:
-            hrefPersonaSplit = href.split('personas/')[1]
-            familyId = hrefPersonaSplit.split('?flag')[0]
-            isHead = False
-        familyId = ark
-        return headTuple(ark=ark, arkPerson=arkPerson, isHead=isHead, headID=headID, familyId=familyId)
+from JsonWalker.walk import JsonPath
 
-    for _, text in walk(person, "fields[*]^  | values[*] | text('';str)"):
-        if 'Head' not in text and 'Глава' not in text: #'Глава' is head in russian
-            continue
-        if ark not in href:
-            hrefPersonaSplit = href.split('personas/')[1]
-            familyId = hrefPersonaSplit.split('?flag')[0]
-            isHead = False
-        arkPerson = person
-        familyId = ark
-        return headTuple(ark=ark, arkPerson=arkPerson, isHead=isHead, headID=headID, familyId=familyId)
+data = {
+    "users": [
+        {"name": "John", "age": 30},
+        {"name": "Jane", "age": 25}
+    ]
+}
 
-familyId = ''
-for person, href in walk(arkInfo, 'persons[0]^|links|persona|href'):
-    headID = person.get('id', '')
-    splitId = href.split('personas/')
-    if len(splitId) > 1:
-        familyId = splitId[1].split('?flag')[0]
-    else:
-        familyId = ark
+# Without context - just get names
+path = JsonPath().key("users").listAll().key("name")
+for name in path.walk(data):
+    print(name)
+print()
+
+# With context - get both user object and name
+path = JsonPath().key("users").listAll().addContext().key("name")
+for user, name in path.walk(data):
+    print(f"{name} has age {user['age']}")
 ```
 
-## Some Constraints
+Output
+```
+John
+Jane
 
-1. Indexes must be in the form [n] or [n:m]
-2. Defaults must be in the form (value;type)
-3. MultiValues must be in the form value1, value2, ...
-4. The MultiValue must be the last path in the string
-5. The MultiValue must not contain a path divider, it instead uses a comma for separation and a greater than sign for continuation
-6. The MultiValue must not contain another MultiValue
-7. The Index must have a specific index if it is used in a MultiValue
-8. The MultiValue must not contain a DictIter or an Index with a wildcard
-9. In order to iterate through a list, a index/range must be specified
-10. The Default must contain a type
-11. Items leave the generator in this order, where their internal order is specified by order in the path: Contexts, Values
-12. DictIters must be {\*}
+John has age 30
+Jane has age 25
+```
+
+## API Reference
+
+JsonWalker uses a fluent, chainable API that makes queries self-documenting and discoverable through IDE autocompletion.
+
+### Core
+
+| Core | Description |
+|--------|-------------|
+| `JsonPath()` | Start a new JSON path query chain |
+| `.walk(data)` | Execute the path query on JSON data as a Generator (gets all the data WHEN you want it, making walk lightning fast)|
+
+### Path Building Methods
+
+| Method | Description | Example |
+|--------|-------------|---------|
+| `.key(name, default=None)` | Access dictionary by key with optional default if the key is not found | `.key("users")` |
+| `.listIndex(idx)` | Access list by specific index (supports negative indices) | `.listIndex(0)` or `.listIndex(-1)` |
+| `.listSlice(start, end)` | Access range of list items | `.listSlice(1, 5)` |
+| `.listAll()` | Access all items in a list | `.listAll()` |
+| `.keyContextAndValue()` | Iterate through key-value pairs of dictionaries, adding keys to context | `.keyContextAndValue()` |
+| `.addContext()` | Add the current value to the context before continuing | `.addContext()` |
+| `.multi(*paths)` | Create diverging paths from the current context, returning all possible combinations of values | `.multi(path1, path2)` |
+
+## Complete Examples
+
+All examples below include the necessary imports and sample data so you can copy and run them immediately.
+
+### Simple Key Access
+
+```python
+from JsonWalker.walk import JsonPath
+
+# Sample data
+data = {
+    "user": {
+        "name": "John",
+        "age": 30
+    }
+}
+
+# Access user's name
+path = JsonPath().key("user").key("name")
+for name in path.walk(data):
+    print(name)
+```
+
+Output
+```
+John
+```
+
+
+### List Iteration with Context
+
+```python
+from JsonWalker.walk import JsonPath
+
+# Sample data
+data = {
+    "users": [
+        {"name": "John", "age": 30},
+        {"name": "Jane", "age": 25}
+    ]
+}
+
+# Iterate through all users, keeping user object as context
+path = JsonPath().key("users").listAll().addContext().key("name", default="Unknown")
+for user, name in path.walk(data):
+    print(f"{name} is part of the user dictionary - {user}")
+```
+
+Output:
+```
+John is part of the user dictionary - {'name': 'John', 'age': 30}
+Jane is part of the user dictionary - {'name': 'Jane', 'age': 25}
+```
+
+### Multi-Value Return
+
+```python
+from JsonWalker.walk import JsonPath
+
+# Sample data
+data = {
+    "users": [
+        {
+            "profile": {
+                "firstName": "John",
+                "lastName": "Doe"
+            }
+        },
+        {
+            "profile": {
+                "firstName": "Kaladin",
+                "lastName": "Stormblessed"
+            }
+        }
+    ]
+}
+
+# Get both first and last name in one query
+path = JsonPath().key("users").listAll().key("profile").multi(
+    JsonPath().key("firstName"),
+    JsonPath().key("lastName")
+)
+for firstName, lastName in path.walk(data):
+    print(f"{firstName} {lastName}")
+```
+
+Output
+```
+John Doe
+Kaladin Stormblessed
+```
+
+### Dictionary Iteration with Context
+
+```python
+from JsonWalker.walk import JsonPath
+
+# Sample data
+data = {
+    "scores": {
+        "math": 95,
+        "science": 87,
+        "english": 92
+    }
+}
+
+# Iterate through all key-value pairs
+path = JsonPath().key("scores").keyContextAndValue()
+for subject, score in path.walk(data):
+    print(f"{subject}: {score}")
+```
+
+Output:
+```
+math: 95
+science: 87
+english: 92
+```
+
+### Range and Slice Operations
+
+```python
+from JsonWalker.walk import JsonPath
+
+# Sample data
+data = {
+    "numbers": [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]
+}
+
+# Get numbers from index 2 to 5 (exclusive)
+list1 = []
+path = JsonPath().key("numbers").listSlice(2, 6)
+for num in path.walk(data):
+    list1.append(num)
+print(list1)
+
+# Get the last 3 numbers
+list2 = []
+path = JsonPath().key("numbers").listSlice(-3, None)
+for num in path.walk(data):
+    list2.append(num)
+print(list2)
+```
+
+Output
+```
+[2, 3, 4, 5]
+[7, 8, 9]
+```
+
+### Complex Nested Data with Added Context
+
+```python
+from JsonWalker.walk import JsonPath
+
+# Sample data
+data = {
+    "departments": [
+        {
+            "name": "Engineering",
+            "employees": [
+                {"name": "Alice", "skills": ["Python", "JavaScript"]},
+                {"name": "Bob", "skills": ["Java", "C++"]}
+            ]
+        },
+        {
+            "name": "Marketing", 
+            "employees": [
+                {"name": "Charlie", "skills": ["SEO", "Analytics"]}
+            ]
+        }
+    ]
+}
+
+# Get all employee names with their department and skills
+# This demonstrates nested context collection
+path = (JsonPath()
+    .key("departments")
+    .listAll()
+    .addContext()  # Keep department info in context
+    .key("employees")
+    .listAll()
+    .multi(
+        JsonPath().key("name"),
+        JsonPath().key("skills").listAll()
+    )
+)
+
+# The whole department dictionary is stored as context, which is why we can access its 'name' key
+for dept, name, skill in path.walk(data):
+    print(f"{name} from {dept['name']} knows {skill}")
+```
+
+Output:
+```
+Alice from Engineering knows Python
+Alice from Engineering knows JavaScript
+Bob from Engineering knows Java
+Bob from Engineering knows C++
+Charlie from Marketing knows SEO
+Charlie from Marketing knows Analytics
+```
+
+### Real-World Example: Processing Complex API Response
+
+```python
+from JsonWalker.walk import JsonPath
+
+# Sample data (complex nested structure like from an API)
+apiResponse = {
+    "persons": [
+        {
+            "id": "123",
+            "names": [
+                {
+                    "nameForms": [
+                        {
+                            "parts": [
+                                {
+                                    "fields": [
+                                        {
+                                            "values": [
+                                                {"labelId": "PR_GIVEN", "value": "John"}
+                                            ]
+                                        }
+                                    ]
+                                }
+                            ]
+                        }
+                    ]
+                }
+            ],
+            "links": {
+                "persona": {
+                    "href": "https://example.com/personas/456"
+                }
+            }
+        }
+    ]
+}
+
+# Extract person info with complex nested structure
+person_path = JsonPath().key("persons").listAll().addContext().multi(
+    JsonPath().key("id"),
+    JsonPath().key("links").key("persona").key("href", default="")
+)
+
+for person, person_id, href in person_path.walk(apiResponse):
+    print(f"Processing person {person_id} with href: {href}")
+    
+    # Get label IDs from deeply nested structure
+    label_path = (JsonPath()
+        .key("names")
+        .listAll()
+        .key("nameForms")
+        .listAll()
+        .key("parts")
+        .listAll()
+        .key("fields")
+        .listAll()
+        .key("values")
+        .listAll()
+        .key("labelId", default="")
+    )
+    
+    for labelID in label_path.walk(person):
+        if 'PR' in labelID and 'FTHR' not in labelID and 'MTHR' not in labelID:
+            print(f"Found person {person_id} with label {labelID}")
+```
+
+Output
+```
+Found person 123 with label PR_GIVEN
+```
+
+### Using Single Values with next()
+
+```python
+from JsonWalker.walk import JsonPath
+
+# Sample data
+data = {
+    "users": [
+        {"name": "John", "age": 30},
+        {"name": "Jane", "age": 25}
+    ]
+}
+
+# Get just the first user's name
+path = JsonPath().key("users").listIndex(0).key("name")
+result = next(path.walk(data))
+print(f"First user's name: {result}")
+
+# Get the last user's age
+path = JsonPath().key("users").listIndex(-1).key("age")
+result = next(path.walk(data))
+print(f"Last user's age: {result}")
+```
+
+Output:
+```
+First user's name: John
+Last user's age: 25
+```
+
+### Handling Missing Keys with Defaults
+
+```python
+from JsonWalker.walk import JsonPath
+
+# Sample data with missing fields
+data = {
+    "users": [
+        {"name": "John", "age": 30},
+        {"name": "Jane"},  # Missing age
+        {"age": 40}        # Missing name
+    ]
+}
+
+# Access with defaults for missing keys
+path = JsonPath().key("users").listAll().addContext().multi(
+    JsonPath().key("name", default="unknown_name"),
+    JsonPath().key("age", default=-1)
+)
+
+for user, name, age in path.walk(data):
+    print(f"{name} is {age} years old")
+```
+
+Output:
+```
+John is 30 years old
+Jane is -1 years old
+unknown_name is 40 years old
+```
+
+### Real World Example: Two different paths
+As you can see in the data below, the subcategory of electronics contains multiple sections, which have the items we are looking for.
+On the other hand, the subcategory of books does NOT have any sections, and just contains the books themselves. This is a great example of how real world data can be messy, but consistent. On the bright side, JsonWalker can handle this with two different paths.
+```python
+# Sample data with nested categories
+data = {
+    "categories": {
+        "electronics": {
+            "computers": {
+                "laptops": ["MacBook", "ThinkPad", "Dell XPS"],
+                "desktops": ["iMac", "HP Pavilion"]
+            },
+            "phones": {
+                "smartphones": ["iPhone", "Samsung Galaxy"]
+            }
+        },
+        "books": ["The Way of Kings", "To Kill a Mockingbird", "Dragonsbane", "Number the Stars"]
+    }
+}
+
+path = JsonPath().key('categories').key('electronics').keyContextAndValue().keyContextAndValue().listAll()
+for subcategory, section, item in path.walk(data):
+    print(item)
+
+path = JsonPath().key('categories').key('books').listAll()
+for item in path.walk(data):
+    print(item)
+
+```
+
+Output:
+```
+MacBook
+ThinkPad
+Dell XPS
+iMac
+HP Pavilion
+iPhone
+Samsung Galaxy
+The Way of Kings
+To Kill a Mockingbird
+Dragonsbane
+Number the Stars
+```
+
+## Key Features
+
+1. **Generator-based**: Efficient memory usage for large datasets
+2. **Chainable API**: Build complex queries step by step
+3. **Context preservation**: Keep intermediate values during traversal with multiple context collection strategies
+4. **Type-safe defaults**: Specify fallback values with proper types
+5. **Multi-value queries**: Extract multiple values in a single traversal
+6. **Flexible indexing**: Support for positive/negative indices and slicing
+7. **Dictionary iteration**: Built-in support for key-value pair traversal with context
+
+## Context System Benefits
+
+1. **Relationship Preservation**: Keep track of parent-child relationships in nested data
+2. **Multi-level Data Collection**: Gather information from different nesting levels in one pass
+3. **Flexible Output**: Choose exactly what information you need from each level
+4. **Memory Efficient**: Context is only collected when explicitly requested
+
+## Best Practices
+
+1. **Use meaningful variable names**: The fluent API makes it easy to create readable code
+2. **Chain operations logically**: Group related operations together
+3. **Leverage context strategically**: Use `.addContext()` when you need parent information, `.keyContextAndValue()` for dictionary keys
+4. **Provide defaults**: Use the `default` parameter to handle missing keys gracefully
+5. **Break complex queries**: Split very long chains into intermediate variables for readability
+6. **Understand context flow**: Remember that context accumulates - each `.addContext()` or `.keyContextAndValue()` adds to your result tuple
