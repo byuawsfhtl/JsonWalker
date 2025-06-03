@@ -314,11 +314,11 @@ class MultiValue(JsonPath):
             list[Any]: the context list followed by the results from each sub-path
         """
         # Collect all results from each sub-path
-        all_results = []
+        allResults = []
         for path in self.paths:
-            path_results = list(path.walk(current))
-            all_results.append(path_results)
+            pathResults = list(path.walk(current))
+            allResults.append(pathResults)
         
         # Create Cartesian product of all sub-path results
-        for combination in itertools.product(*all_results):
+        for combination in itertools.product(*allResults):
             yield contexts + list(combination)
