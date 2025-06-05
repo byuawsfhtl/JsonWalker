@@ -336,10 +336,10 @@ class PathJoin(JsonPath):
             raise ValueError("PathJoin requires at least one path")
         
         # Combine all paths into a single chain
-        combined_path = self._combinePaths(paths)
+        combinedPath = self._combinePaths(paths)
         
         # Initialize this PathJoin as the final segment in the combined path
-        super().__init__(combined_path)
+        super().__init__(combinedPath)
     
     def _combinePaths(self, paths: tuple[JsonPath, ...]) -> Optional[JsonPath]:
         """Helper function to combine multiple paths into a single chained path.
@@ -351,13 +351,13 @@ class PathJoin(JsonPath):
             Optional[JsonPath]: the final segment of the combined path, or None if no paths
         """
         # Start with None (no previous path)
-        combined_path = None
+        combinedPath = None
         
         # Process each path in order
         for path in paths:
-            combined_path = self._appendPath(combined_path, path)
+            combinedPath = self._appendPath(combinedPath, path)
         
-        return combined_path
+        return combinedPath
     
     def _appendPath(self, currentPath: Optional[JsonPath], pathToAppend: JsonPath) -> Optional[JsonPath]:
         """Helper function to append one path to another.
@@ -375,8 +375,8 @@ class PathJoin(JsonPath):
         # Add all segments from this path
         for segment in segmentsToAppend:
             # Create a new instance of the same type with the current path as previous
-            new_segment = self._cloneSegment(segment, currentPath)
-            currentPath = new_segment
+            newSegment = self._cloneSegment(segment, currentPath)
+            currentPath = newSegment
         
         return currentPath
     
@@ -404,7 +404,7 @@ class PathJoin(JsonPath):
             return MultiValue(segment.paths, prevPath)
         elif isinstance(segment, JsonPath):
             # Base JsonPath case
-            new_segment = JsonPath(prevPath)
-            return new_segment
+            newSegment = JsonPath(prevPath)
+            return newSegment
         else:
             raise TypeError(f"Unknown path segment type: {type(segment)}")
