@@ -322,3 +322,89 @@ class MultiValue(JsonPath):
         # Create Cartesian product of all sub-path results
         for combination in itertools.product(*allResults):
             yield contexts + list(combination)
+
+class PathJoin(JsonPath):
+    """Path element that joins multiple paths together by combining their path segments."""
+    
+    def __init__(self, *paths: JsonPath) -> None:
+        """Initiates the path join by combining the path segments from all provided paths.
+        
+        Args:
+            *paths (JsonPath): variable number of paths to join together in order
+        """
+        if not paths:
+            raise ValueError("PathJoin requires at least one path")
+        
+        # Combine all paths into a single chain
+        combined_path = self._combinePaths(paths)
+        
+        # Initialize this PathJoin as the final segment in the combined path
+        super().__init__(combined_path)
+    
+    def _combinePaths(self, paths: tuple[JsonPath, ...]) -> Optional[JsonPath]:
+        """Helper function to combine multiple paths into a single chained path.
+        
+        Args:
+            paths (tuple[JsonPath, ...]): the paths to combine in order
+            
+        Returns:
+            Optional[JsonPath]: the final segment of the combined path, or None if no paths
+        """
+        # Start with None (no previous path)
+        combined_path = None
+        
+        # Process each path in order
+        for path in paths:
+            combined_path = self._appendPath(combined_path, path)
+        
+        return combined_path
+    
+    def _appendPath(self, currentPath: Optional[JsonPath], pathToAppend: JsonPath) -> Optional[JsonPath]:
+        """Helper function to append one path to another.
+        
+        Args:
+            currentPath (Optional[JsonPath]): the current combined path (or None)
+            pathToAppend (JsonPath): the path to append to the current path
+            
+        Returns:
+            Optional[JsonPath]: the final segment after appending
+        """
+        # Get all segments from the path to append
+        segmentsToAppend = pathToAppend._getFullPath()
+        
+        # Add all segments from this path
+        for segment in segmentsToAppend:
+            # Create a new instance of the same type with the current path as previous
+            new_segment = self._cloneSegment(segment, currentPath)
+            currentPath = new_segment
+        
+        return currentPath
+    
+    def _cloneSegment(self, segment: JsonPath, prevPath: Optional[JsonPath]) -> JsonPath:
+        """Create a copy of a path segment with a new previous path.
+        
+        Args:
+            segment (JsonPath): the segment to clone
+            prevPath (Optional[JsonPath]): the new previous path
+            
+        Returns:
+            JsonPath: a new instance of the same segment type
+        """
+        if isinstance(segment, Key):
+            return Key(segment.dictKey, segment.default, prevPath)
+        elif isinstance(segment, Index):
+            return Index(segment.index, prevPath)
+        elif isinstance(segment, Slice):
+            return Slice(segment.start, segment.end, prevPath)
+        elif isinstance(segment, KeyContextAndValue):
+            return KeyContextAndValue(prevPath)
+        elif isinstance(segment, AddedContext):
+            return AddedContext(prevPath)
+        elif isinstance(segment, MultiValue):
+            return MultiValue(segment.paths, prevPath)
+        elif isinstance(segment, JsonPath):
+            # Base JsonPath case
+            new_segment = JsonPath(prevPath)
+            return new_segment
+        else:
+            raise TypeError(f"Unknown path segment type: {type(segment)}")
