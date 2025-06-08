@@ -453,7 +453,7 @@ path = JsonPath().key("schools").listAll().multi(
     )
 )
 
-for school_name, city, course_code, course_title in path.walk(data):
+for school_name, city, (course_code, course_title) in path.walk(data):
     print(f"{school_name} in {city}: {course_code} - {course_title}")
 ```
 
