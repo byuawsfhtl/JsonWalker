@@ -144,7 +144,7 @@ class JsonPath:
         """
         return MultiValue(paths, self)
 
-    def filter(self, conditionPath: 'JsonPath', conditionValue: Callable[[Any], bool]) -> "Filter":
+    def filter(self, conditionPath: 'JsonPath', condition: Callable[[Any], bool]) -> "Filter":
         """Creates a path segment that filters results based on a condition evaluated on a related path.
         
         The condition path is evaluated from the same parent context, but doesn't become part of 
@@ -152,12 +152,12 @@ class JsonPath:
 
         Args:
             conditionPath (JsonPath): the path to evaluate for the filtering condition
-            conditionValue (Callable[[Any], bool]): a function that takes a value and returns True/False
+            condition (Callable[[Any], bool]): a function that takes a value and returns True/False
 
         Returns:
             Filter: a `JsonPath` segment that filters based on the condition
         """
-        return Filter(conditionPath, conditionValue, self)
+        return Filter(conditionPath, condition, self)
 
 
 class Key(JsonPath):
@@ -342,17 +342,17 @@ class MultiValue(JsonPath):
 class Filter(JsonPath):
     """Path element that filters the current value based on a condition evaluated on a related path."""
     
-    def __init__(self, conditionPath: JsonPath, conditionValue: Callable[[Any], bool], prevPath: Optional[JsonPath] = None) -> None:
+    def __init__(self, conditionPath: JsonPath, condition: Callable[[Any], bool], prevPath: Optional[JsonPath] = None) -> None:
         """Initiates the filter path.
         
         Args:
             conditionPath (JsonPath): the path to evaluate for the filtering condition
-            conditionValue (Callable[[Any], bool]): a function that takes a value and returns True/False
+            condition (Callable[[Any], bool]): a function that takes a value and returns True/False
             prevPath (Optional[JsonPath]): the preceding path segment. Defaults to None
         """
         super().__init__(prevPath)
         self.conditionPath = conditionPath
-        self.conditionValue = conditionValue
+        self.condition = condition
     
     def _apply(self, current: Any, remainingPath: list[JsonPath], contexts: list[Any]) -> Generator[Any, None, None]:
         """Apply the filter by evaluating the condition path and only continuing if the condition is met.
@@ -383,7 +383,7 @@ class Filter(JsonPath):
                 valueToCheck = result
             
             try:
-                if self.conditionValue(valueToCheck):
+                if self.condition(valueToCheck):
                     conditionMet = True
                     break
             except:
@@ -475,7 +475,7 @@ class PathJoin(JsonPath):
         elif isinstance(segment, MultiValue):
             return MultiValue(segment.paths, prevPath)
         elif isinstance(segment, Filter):
-            return Filter(segment.conditionPath, segment.conditionValue, prevPath)
+            return Filter(segment.conditionPath, segment.condition, prevPath)
         elif isinstance(segment, JsonPath):
             # Base JsonPath case
             newSegment = JsonPath(prevPath)

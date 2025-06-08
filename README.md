@@ -189,7 +189,7 @@ data = {
 # Get names of only electronic products
 path = JsonPath().key('products').listAll().filter(
     conditionPath=JsonPath().key('category'),
-    conditionValue=lambda x: x == 'electronics'
+    condition=lambda x: x == 'electronics'
 ).key('name')
 
 for product_name in path.walk(data):
@@ -224,7 +224,7 @@ data = {
 # Get names of employees in high-budget departments
 path = JsonPath().key('employees').listAll().filter(
     conditionPath=JsonPath().key('department').key('budget'),
-    conditionValue=lambda x: x > 40000
+    condition=lambda x: x > 40000
 ).key('name')
 
 for name in path.walk(data):
