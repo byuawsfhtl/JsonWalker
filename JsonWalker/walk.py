@@ -1,5 +1,5 @@
 import itertools
-from typing import Generator, Any, Optional
+from typing import Generator, Any, Optional, Callable
 
 class JsonPath:
     """Base class for building chainable JSON path queries. Allows fluent querying of nested dictionaries and lists."""
@@ -143,6 +143,21 @@ class JsonPath:
             MultiValue: a `JsonPath` segment that gathers values from each of the provided paths
         """
         return MultiValue(paths, self)
+
+    def filter(self, conditionPath: 'JsonPath', condition: Callable[[Any], bool]) -> "Filter":
+        """Creates a path segment that filters results based on a condition evaluated on a related path.
+        
+        The condition path is evaluated from the same parent context, but doesn't become part of 
+        the main traversal path. Only items that satisfy the condition continue in the main path.
+
+        Args:
+            conditionPath (JsonPath): the path to evaluate for the filtering condition
+            condition (Callable[[Any], bool]): a function that takes a value and returns True/False
+
+        Returns:
+            Filter: a `JsonPath` segment that filters based on the condition
+        """
+        return Filter(conditionPath, condition, self)
 
 
 class Key(JsonPath):
@@ -322,3 +337,148 @@ class MultiValue(JsonPath):
         # Create Cartesian product of all sub-path results
         for combination in itertools.product(*allResults):
             yield contexts + list(combination)
+
+
+class Filter(JsonPath):
+    """Path element that filters the current value based on a condition evaluated on a related path."""
+    
+    def __init__(self, conditionPath: JsonPath, condition: Callable[[Any], bool], prevPath: Optional[JsonPath] = None) -> None:
+        """Initiates the filter path.
+        
+        Args:
+            conditionPath (JsonPath): the path to evaluate for the filtering condition
+            condition (Callable[[Any], bool]): a function that takes a value and returns True/False
+            prevPath (Optional[JsonPath]): the preceding path segment. Defaults to None
+        """
+        super().__init__(prevPath)
+        self.conditionPath = conditionPath
+        self.condition = condition
+    
+    def _apply(self, current: Any, remainingPath: list[JsonPath], contexts: list[Any]) -> Generator[Any, None, None]:
+        """Apply the filter by evaluating the condition path and only continuing if the condition is met.
+        
+        The key insight is that we evaluate the conditionPath from the current node (the same parent context
+        where the main path would continue), but we don't include its results in the main traversal.
+        
+        Args:
+            current (Any): the current value being traversed (the parent context for both paths)
+            remainingPath (list[JsonPath]): remaining path segments to apply
+            contexts (list[Any]): the current context stack
+        
+        Yields:
+            Any: results from continuing the main path, but only if the condition is satisfied
+        """
+        # Evaluate the condition path from the current context
+        conditionResults = list(self.conditionPath.walk(current))
+        
+        # Check if any of the condition results satisfy the condition
+        conditionMet = False
+        for result in conditionResults:
+            # Handle both context + value results and direct value results
+            if isinstance(result, list) and len(result) > 0:
+                # If result is a list (context + value), check the last element (the actual value)
+                valueToCheck = result[-1]
+            else:
+                # If result is a direct value
+                valueToCheck = result
+            
+            try:
+                if self.condition(valueToCheck):
+                    conditionMet = True
+                    break
+            except:
+                # If condition evaluation fails, skip this item
+                continue
+        
+        # Only continue with the main path if the condition is met
+        if conditionMet:
+            yield from self._traverse(current, remainingPath, contexts)
+
+
+class PathJoin(JsonPath):
+    """Path element that joins multiple paths together by combining their path segments."""
+    
+    def __init__(self, *paths: JsonPath) -> None:
+        """Initiates the path join by combining the path segments from all provided paths.
+        
+        Args:
+            *paths (JsonPath): variable number of paths to join together in order
+        """
+        if not paths:
+            raise ValueError("PathJoin requires at least one path")
+        
+        # Combine all paths into a single chain
+        combinedPath = self._combinePaths(paths)
+        
+        # Initialize this PathJoin as the final segment in the combined path
+        super().__init__(combinedPath)
+    
+    def _combinePaths(self, paths: tuple[JsonPath, ...]) -> Optional[JsonPath]:
+        """Helper function to combine multiple paths into a single chained path.
+        
+        Args:
+            paths (tuple[JsonPath, ...]): the paths to combine in order
+            
+        Returns:
+            Optional[JsonPath]: the final segment of the combined path, or None if no paths
+        """
+        # Start with None (no previous path)
+        combinedPath = None
+        
+        # Process each path in order
+        for path in paths:
+            combinedPath = self._appendPath(combinedPath, path)
+        
+        return combinedPath
+    
+    def _appendPath(self, currentPath: Optional[JsonPath], pathToAppend: JsonPath) -> Optional[JsonPath]:
+        """Helper function to append one path to another.
+        
+        Args:
+            currentPath (Optional[JsonPath]): the current combined path (or None)
+            pathToAppend (JsonPath): the path to append to the current path
+            
+        Returns:
+            Optional[JsonPath]: the final segment after appending
+        """
+        # Get all segments from the path to append
+        segmentsToAppend = pathToAppend._getFullPath()
+        
+        # Add all segments from this path
+        for segment in segmentsToAppend:
+            # Create a new instance of the same type with the current path as previous
+            newSegment = self._cloneSegment(segment, currentPath)
+            currentPath = newSegment
+        
+        return currentPath
+    
+    def _cloneSegment(self, segment: JsonPath, prevPath: Optional[JsonPath]) -> JsonPath:
+        """Create a copy of a path segment with a new previous path.
+        
+        Args:
+            segment (JsonPath): the segment to clone
+            prevPath (Optional[JsonPath]): the new previous path
+            
+        Returns:
+            JsonPath: a new instance of the same segment type
+        """
+        if isinstance(segment, Key):
+            return Key(segment.dictKey, segment.default, prevPath)
+        elif isinstance(segment, Index):
+            return Index(segment.index, prevPath)
+        elif isinstance(segment, Slice):
+            return Slice(segment.start, segment.end, prevPath)
+        elif isinstance(segment, KeyContextAndValue):
+            return KeyContextAndValue(prevPath)
+        elif isinstance(segment, AddedContext):
+            return AddedContext(prevPath)
+        elif isinstance(segment, MultiValue):
+            return MultiValue(segment.paths, prevPath)
+        elif isinstance(segment, Filter):
+            return Filter(segment.conditionPath, segment.condition, prevPath)
+        elif isinstance(segment, JsonPath):
+            # Base JsonPath case
+            newSegment = JsonPath(prevPath)
+            return newSegment
+        else:
+            raise TypeError(f"Unknown path segment type: {type(segment)}")
