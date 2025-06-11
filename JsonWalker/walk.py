@@ -1,6 +1,10 @@
 import itertools
-from typing import Generator, Any, Optional, Callable, TypeVar, Generic, Union, Type, cast, overload
+from typing import (
+    Generator, Any, Optional, Callable, TypeVar, Generic,
+    Union, Type, cast, overload
+)
 
+# --- Type Variables ---
 T = TypeVar('T')
 U = TypeVar('U')
 V = TypeVar('V')
@@ -15,6 +19,8 @@ A4 = TypeVar('A4')
 A5 = TypeVar('A5')
 A6 = TypeVar('A6')
 
+TypeForJsonLikeData = Union[dict[str, Any], list[Any]]
+
 class JsonPath(Generic[T]):
     """Base class for building chainable JSON path queries with type inference."""
     
@@ -25,7 +31,6 @@ class JsonPath(Generic[T]):
             prevPath (Optional[JsonPath]): the preceding path element in the chain
         """
         self.prevPath = prevPath
-        self.contexts: list[Any] = []
 
     def _getFullPath(self) -> list['JsonPath[Any]']:
         """Build the complete path by following the chain backwards.
@@ -33,14 +38,14 @@ class JsonPath(Generic[T]):
         Returns:
             list[JsonPath]: the full query chain of JsonPath nodes
         """
-        path = []
-        current = self
+        path: list['JsonPath[Any]'] = []
+        current: Optional['JsonPath[Any]'] = self
         while current:
             path.insert(0, current)
             current = current.prevPath
         return path
 
-    def walk(self, data: dict|list) -> Generator[T, None, None]:
+    def walk(self, data: TypeForJsonLikeData) -> Generator[T, None, None]:
         """Execute the path query on the given JSON-like data.
 
         Args:
@@ -67,7 +72,10 @@ class JsonPath(Generic[T]):
             return
 
         if not remainingPath:
-            yield contexts + [current] if contexts else current
+            # If context was collected, yield it with the final value
+            # Otherwise, just yield the value itself
+            final_result = contexts + [current] if contexts else current
+            yield cast(T, final_result)
             return
 
         pathItem = remainingPath[0]
@@ -129,9 +137,9 @@ class JsonPath(Generic[T]):
         """
         return Slice(None, None, self)
 
-    def keyContextAndValue(self) -> "KeyContextAndValue[tuple[str, Any]]":
-        """Creates a path segment that iterates through all key-value pairs in a dictionary.
-        The keys are appended to the context, and the values are passed on to the next segment.
+    def keyContextAndValue(self) -> "KeyContextAndValue[T]":
+        """Adds dict keys to context and passes values to the next segment.
+        The final type `T` depends on what follows this step.
 
         Returns:
             KeyContextAndValue: a JsonPath segment for dictionary iteration
@@ -242,9 +250,6 @@ class Key(JsonPath[Any]):
         if isinstance(current, dict):
             value = current.get(self.dictKey, self.default)
             yield from self._traverse(value, remainingPath, contexts)
-        else:
-            yield from self._traverse(current, remainingPath, contexts)
-
 
 class Index(JsonPath[Any]):
     """Path element that accesses a list by index."""
@@ -270,12 +275,8 @@ class Index(JsonPath[Any]):
         Yields:
             Any: results from traversing the value at the given index
         """
-        if isinstance(current, list):
-            idx = self.index if self.index >= 0 else len(current) + self.index
-            if 0 <= idx < len(current):
-                yield from self._traverse(current[idx], remainingPath, contexts)
-        else:
-            yield from self._traverse(current, remainingPath, contexts)
+        if isinstance(current, list) and -len(current) <= self.index < len(current):
+            yield from self._traverse(current[self.index], remainingPath, contexts)
 
 
 class Slice(JsonPath[Any]):
@@ -305,22 +306,14 @@ class Slice(JsonPath[Any]):
             Any: results from traversing the values in the sliced range
         """
         if isinstance(current, list):
-            start = self.start or 0
-            end = self.end if self.end is not None else len(current)
-            if start < 0:
-                start += len(current)
-            if end < 0:
-                end += len(current)
-            for item in current[start:end]:
+            for item in current[self.start:self.end]:
                 yield from self._traverse(item, remainingPath, contexts)
-        else:
-            yield from self._traverse(current, remainingPath, contexts)
 
 
-class KeyContextAndValue(JsonPath[tuple[str, Any]]):
+class KeyContextAndValue(JsonPath[T]):
     """Path element that iterates through all dictionary key-value pairs."""
 
-    def _apply(self, current: Any, remainingPath: list[JsonPath[Any]], contexts: list[Any]) -> Generator[tuple[str, Any], None, None]:
+    def _apply(self, current: Any, remainingPath: list[JsonPath[Any]], contexts: list[Any]) -> Generator[T, None, None]:
         """Iterate over all key-value pairs in a dictionary, appending the key to the context stack.
 
         Args:
@@ -379,15 +372,14 @@ class MultiValue(JsonPath[T]):
         Yields:
             T: the context list followed by the results from each sub-path
         """
-        # Collect all results from each sub-path
         allResults = []
         for path in self.paths:
-            pathResults = list(path.walk(current))
-            allResults.append(pathResults)
+            path_results = list(path.walk(current))
+            # If no results, use [None] to ensure we still get a combination
+            allResults.append(path_results if path_results else [None])
         
-        # Create Cartesian product of all sub-path results
         for combination in itertools.product(*allResults):
-            yield contexts + list(combination)
+            yield cast(T, combination)
 
 
 class Filter(JsonPath[T]):
@@ -416,30 +408,8 @@ class Filter(JsonPath[T]):
         Yields:
             T: results from continuing the main path, but only if the condition is satisfied
         """
-        # Evaluate the condition path from the current context
         conditionResults = list(self.conditionPath.walk(current))
-        
-        # Check if any of the condition results satisfy the condition
-        conditionMet = False
-        for result in conditionResults:
-            # Handle both context + value results and direct value results
-            if isinstance(result, list) and len(result) > 0:
-                # If result is a list (context + value), check the last element (the actual value)
-                valueToCheck = result[-1]
-            else:
-                # If result is a direct value
-                valueToCheck = result
-            
-            try:
-                if self.condition(valueToCheck):
-                    conditionMet = True
-                    break
-            except:
-                # If condition evaluation fails, skip this item
-                continue
-        
-        # Only continue with the main path if the condition is met
-        if conditionMet:
+        if any(self.condition(res) for res in conditionResults):
             yield from self._traverse(current, remainingPath, contexts)
 
 
@@ -468,9 +438,7 @@ class EnsureType(JsonPath[T]):
             T: results from continuing traversal, but only if type matches
         """
         if isinstance(current, self.expected_type):
-            # Cast to the expected type for IDE inference
-            typed_current = cast(self.expected_type, current) # type: ignore
-            yield from self._traverse(typed_current, remainingPath, contexts)
+            yield from self._traverse(current, remainingPath, contexts)
 
 
 class PathJoin(JsonPath[T]):

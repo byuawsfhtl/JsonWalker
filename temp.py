@@ -220,9 +220,13 @@ def section_5_dictionary_iteration():
     path = JsonPath().key("scores").keyContextAndValue()
     for subject, score in path.walk(data):
         print(subject, score)
-    path = JsonPath().key("scores").keyContextAndValue().ensureType(int)
-    for subject, score in path.walk(data):  # Types: str, int
-        print(f"{subject}: {score}")
+
+# TODO rewrite the key() function to be getPathAtKey('the key') or some other name which can be used to get the path of the value as it currently does, or blank to go from any dictionary key to its cooresponding value path
+# TODO add a new function that is like getKeyOfDict() which has no args and always returns a string
+# TODO delete the addContext and keyContextAndValue functions
+    # path = JsonPath().key('scores').multi(
+    #     JsonPath().getPathAtKey()
+    # )
 
 
 def section_5_complex_dictionary_iteration():
@@ -321,11 +325,11 @@ def section_7_path_joining():
 
     # Use with type safety
     print("Employee names:")
-    for name in name_path.walk(data):  # Type: str
+    for name in name_path.walk(data):  # Type inference from IDE should be str, but it's any
         print(f"  Employee: {name}")
     
     print("Employee salaries:")
-    for salary in salary_path.walk(data):  # Type: int
+    for salary in salary_path.walk(data):  # Type inference from IDE should be int, but it's any
         print(f"  Salary: ${salary:,}")
 
 
