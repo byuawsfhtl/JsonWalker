@@ -10,7 +10,7 @@ To run these examples, make sure you have JsonWalker installed:
 pip install JsonWalker
 """
 
-from JsonWalker.walk import JsonPath, pathJoin
+from JsonWalker.walk import JsonPath
 
 def basic_usage_pattern():
     """Basic Usage Pattern from Quick Start"""
@@ -341,14 +341,11 @@ def section_7_path_joining():
 
     # Define reusable path segments
     company_path = JsonPath().key("company")
-    departments_path = JsonPath().key("departments").listAll().yieldKey(JsonPath())
+    departments_path = JsonPath().key("departments").listAll()
     employees_path = JsonPath().key("employees").listAll()
 
-    # Currently this pathJoin is impossible because yieldKey is terminal
-    # Should be hinting to _PathExecutor[tuple[str, str]]
-    # Currently type hints to _PathExecutor[tuple[tuple[str, Any], Any, str]]
-    name_path = pathJoin(company_path, departments_path, employees_path, JsonPath().key("name").ensureType(str))
-    salary_path = pathJoin(company_path, departments_path, employees_path, JsonPath().key("salary").ensureType(int))
+    name_path = company_path.add(departments_path).add(employees_path).add(JsonPath().key("name").ensureType(str))
+    salary_path = company_path.add(departments_path).add(employees_path).add(JsonPath().key("salary").ensureType(int))
 
     # Use with type safety
     print("Employee names:")

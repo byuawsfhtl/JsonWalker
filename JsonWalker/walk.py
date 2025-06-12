@@ -5,6 +5,7 @@ from typing import (
 )
 
 # --- Type Variables ---
+TypeForJsonLikeData = Union[dict[str, Any], list[Any]]
 T = TypeVar('T')
 U = TypeVar('U')
 V = TypeVar('V')
@@ -19,7 +20,6 @@ A4 = TypeVar('A4')
 A5 = TypeVar('A5')
 A6 = TypeVar('A6')
 
-TypeForJsonLikeData = Union[dict[str, Any], list[Any]]
 
 class _Executor(Generic[T]):
     """Core path execution functionality - handles walking and traversing paths."""
@@ -128,19 +128,72 @@ class _Builder:
         """
         return MultiValuePath(paths, self)
 
+
 class JsonPath(_Executor[T], _Builder):
     """Main JsonPath class - combines execution and building capabilities."""
-    pass
-
-
-class _ContinuablePath(_Executor[T], _Builder):
-    """Base class for path segments that can continue building (non-terminal)."""
     pass
 
 
 class _TerminalPath(_Executor[T]):
     """Base class for path segments that cannot continue building (terminal)."""
     pass
+
+
+class _ContinuablePath(_Executor[T], _Builder):
+    """Base class for path segments that can continue building (non-terminal)."""
+    @overload
+    def add(self, path_to_add: "_TerminalPath[U]") -> "_TerminalPath[U]": ...
+
+    @overload
+    def add(self, path_to_add: "_ContinuablePath[U]") -> "_ContinuablePath[U]": ...
+
+    def add(self, path_to_add: "_Executor[U]") -> "_Executor[U]":
+        """
+        Combines the current path with another path segment, returning a new path.\n\n
+        This method provides an object-oriented way to chain path objects together.The return type is inferred based on the path segment being added.
+        If the added path is terminal (e.g., `multi()` or `yieldKey()`), the resulting path cannot be extended further, and your IDE will correctly reflect this.
+        """
+        is_terminal = isinstance(path_to_add, _TerminalPath)
+        combined_path = self._combine_two_paths(path_to_add)
+
+        if is_terminal:
+            return JoinedTerminalPath(combined_path, path_to_add)
+        else:
+            return JoinedContinuablePath(combined_path, path_to_add)
+
+    def _combine_two_paths(self, second: _Executor[Any]) -> Optional[_Executor[Any]]:
+        """Combine two paths into a single chained path."""
+        combined_path = None
+        # Clone segments of the first path into combined_path
+        for segment in self._getFullPath():
+            combined_path = self._clone_segment(segment, combined_path)
+        # Clone segments of the second path into combined_path
+        for segment in second._getFullPath():
+            combined_path = self._clone_segment(segment, combined_path)
+        return combined_path
+    
+    @staticmethod
+    def _clone_segment(segment: _Executor[Any], prev_path: Optional[_Executor[Any]]) -> _Executor[Any]:
+        """Create a copy of a path segment with a new previous path."""
+        if isinstance(segment, KeyPath):
+            return KeyPath(segment._dictKey, segment._default, prev_path)
+        elif isinstance(segment, IndexPath):
+            return IndexPath(segment._index, prev_path)
+        elif isinstance(segment, SlicePath):
+            return SlicePath(segment._start, segment._end, prev_path)
+        elif isinstance(segment, YieldedKeyPlusValuePath):
+            return YieldedKeyPlusValuePath(segment.valuePath, prev_path)
+        elif isinstance(segment, MultiValuePath):
+            return MultiValuePath(segment._paths, prev_path)
+        elif isinstance(segment, FilteredPath):
+            return FilteredPath(segment._conditionPath, segment._condition, prev_path)
+        elif isinstance(segment, EnsureTypePath):
+            return EnsureTypePath(segment._expected_type, prev_path)
+        elif isinstance(segment, (JsonPath, _ContinuablePath, _TerminalPath, _Executor)):
+            # For base path types, create a basic _PathExecutor
+            return _Executor(prev_path)
+        else:
+            raise TypeError(f"Unknown path segment type: {type(segment)}")
 
 
 # Non-terminal path segments (can continue building)
@@ -198,7 +251,32 @@ class FilteredPath(_ContinuablePath[T]):
             yield from self._traverse(current, remainingPath, contexts)
 
 
-class EnsureTypePath(_ContinuablePath[T]):
+class JoinedContinuablePath(_ContinuablePath[T]):
+    """A joined path that can continue building (when final path is non-terminal)."""
+    
+    def __init__(self, combined_path: Optional[_Executor[Any]], template_path: _Executor[T]) -> None:
+        super().__init__(combined_path)
+        self._template_path = template_path
+    
+    def _apply(self, current: Any, remaining_path: list[_Executor[Any]], contexts: list[Any]) -> Generator[T, None, None]:
+        # Use the template path's _apply method for the actual logic
+        yield from self._template_path._apply(current, remaining_path, contexts)
+
+
+# Terminal path segments (cannot continue building)
+class JoinedTerminalPath(_TerminalPath[T]):
+    """A joined path that cannot continue building (when final path is terminal)."""
+    
+    def __init__(self, combined_path: Optional[_Executor[Any]], template_path: _Executor[T]) -> None:
+        super().__init__(combined_path)
+        self._template_path = template_path
+    
+    def _apply(self, current: Any, remaining_path: list[_Executor[Any]], contexts: list[Any]) -> Generator[T, None, None]:
+        """Use the template path's _apply method for the actual logic"""
+        yield from self._template_path._apply(current, remaining_path, contexts)
+
+
+class EnsureTypePath(_TerminalPath[T]):
     """Path element that ensures the current value is of a specific type."""
     
     def __init__(self, expected_type: Type[T], prevPath: Optional[_Executor[Any]] = None) -> None:
@@ -210,7 +288,6 @@ class EnsureTypePath(_ContinuablePath[T]):
             yield from self._traverse(current, remainingPath, contexts)
 
 
-# Terminal path segments (cannot continue building)
 class YieldedKeyPlusValuePath(_TerminalPath[T]):
     """Path element that yields (key, value) pairs from dictionary iteration."""
     
@@ -242,121 +319,3 @@ class MultiValuePath(_TerminalPath[T]):
         
         for combination in itertools.product(*allResults):
             yield cast(T, combination)
-
-
-class JoinedContinuablePath(_ContinuablePath[T]):
-    """A joined path that can continue building (when final path is non-terminal)."""
-    
-    def __init__(self, combined_path: Optional[_Executor[Any]], template_path: _Executor[T]) -> None:
-        super().__init__(combined_path)
-        self._template_path = template_path
-    
-    def _apply(self, current: Any, remaining_path: list[_Executor[Any]], contexts: list[Any]) -> Generator[T, None, None]:
-        # Use the template path's _apply method for the actual logic
-        yield from self._template_path._apply(current, remaining_path, contexts)
-
-
-class JoinedTerminalPath(_TerminalPath[T]):
-    """A joined path that cannot continue building (when final path is terminal)."""
-    
-    def __init__(self, combined_path: Optional[_Executor[Any]], template_path: _Executor[T]) -> None:
-        super().__init__(combined_path)
-        self._template_path = template_path
-    
-    def _apply(self, current: Any, remaining_path: list[_Executor[Any]], contexts: list[Any]) -> Generator[T, None, None]:
-        # Use the template path's _apply method for the actual logic
-        yield from self._template_path._apply(current, remaining_path, contexts)
-
-
-@overload
-def pathJoin(p1: _Executor[T]) -> _Executor[T]: ...
-@overload
-def pathJoin(p1: _Builder[Any], p2: _Executor[T]) -> _Executor[T]: ...
-@overload
-def pathJoin(p1: _Builder[Any], p2: _Builder[Any], p3: _Executor[T]) -> _Executor[T]: ...
-@overload
-def pathJoin(p1: _Builder[Any], p2: _Builder[Any], p3: _Builder[Any], p4: _Executor[T]) -> _Executor[T]: ...
-@overload
-def pathJoin(p1: _Builder[Any], p2: _Builder[Any], p3: _Builder[Any], p4: _Builder[Any], p5: _Executor[T]) -> _Executor[T]: ...
-@overload
-def pathJoin(p1: _Builder[Any], p2: _Builder[Any], p3: _Builder[Any], p4: _Builder[Any], p5: _Builder[Any], p6: _Executor[T]) -> _Executor[T]: ...
-@overload
-def pathJoin(p1: _Builder[Any], p2: _Builder[Any], p3: _Builder[Any], p4: _Builder[Any], p5: _Builder[Any], p6: _Builder[Any], p7: _Executor[T]) -> _Executor[T]: ...
-@overload
-def pathJoin(p1: _Builder[Any], p2: _Builder[Any], p3: _Builder[Any], p4: _Builder[Any], p5: _Builder[Any], p6: _Builder[Any], p7: _Builder[Any], p8: _Executor[T]) -> _Executor[T]: ...
-@overload
-def pathJoin(p1: _Builder[Any], p2: _Builder[Any], p3: _Builder[Any], p4: _Builder[Any], p5: _Builder[Any], p6: _Builder[Any], p7: _Builder[Any], p8: _Builder[Any], p9: _Executor[T]) -> _Executor[T]: ...
-@overload
-def pathJoin(p1: _Builder[Any], p2: _Builder[Any], p3: _Builder[Any], p4: _Builder[Any], p5: _Builder[Any], p6: _Builder[Any], p7: _Builder[Any], p8: _Builder[Any], p9: _Builder[Any], p10: _Executor[T]) -> _Executor[T]: ...
-@overload
-def pathJoin(p1: _Builder[Any], p2: _Builder[Any], p3: _Builder[Any], p4: _Builder[Any], p5: _Builder[Any], p6: _Builder[Any], p7: _Builder[Any], p8: _Builder[Any], p9: _Builder[Any], p10: _Builder[Any], p11: _Executor[T]) -> _Executor[T]: ...
-@overload
-def pathJoin(p1: _Builder[Any], p2: _Builder[Any], p3: _Builder[Any], p4: _Builder[Any], p5: _Builder[Any], p6: _Builder[Any], p7: _Builder[Any], p8: _Builder[Any], p9: _Builder[Any], p10: _Builder[Any], p11: _Builder[Any], p12: _Executor[T]) -> _Executor[T]: ...
-def pathJoin(*paths: _Executor[Any]) -> Any:
-    """Join multiple paths together, preserving the type of the final path.
-    
-    Args:
-        *paths: Variable number of paths to join in order
-        
-    Returns:
-        _PathExecutor: A path that represents the combination of all input paths. The return type matches the final path's type (terminal vs continuable).
-    """
-    if not paths:
-        raise ValueError("PathJoin requires at least one path")
-    
-    if len(paths) == 1:
-        return paths[0]
-    
-    # Get the final path to determine if result should be terminal
-    final_path = paths[-1]
-    is_terminal = isinstance(final_path, _TerminalPath)
-    
-    # Build the combined path by chaining all segments
-    combined_path = _combine_paths(paths)
-    
-    # Return appropriate type based on final path
-    if is_terminal:
-        return JoinedTerminalPath(combined_path, final_path)
-    else:
-        return JoinedContinuablePath(combined_path, final_path)
-
-def _combine_paths(paths: tuple[_Executor[Any], ...]) -> Optional[_Executor[Any]]:
-    """Combine multiple paths into a single chained path."""
-    combined_path = None
-    
-    for path in paths:
-        combined_path = _append_path(combined_path, path)
-    
-    return combined_path
-
-def _append_path(current_path: Optional[_Executor[Any]], path_to_append: _Executor[Any]) -> Optional[_Executor[Any]]:
-    """Append one path to another by cloning all segments."""
-    segments_to_append = path_to_append._getFullPath()
-    
-    for segment in segments_to_append:
-        new_segment = _clone_segment(segment, current_path)
-        current_path = new_segment
-    
-    return current_path
-
-def _clone_segment(segment: _Executor[Any], prev_path: Optional[_Executor[Any]]) -> _Executor[Any]:
-    """Create a copy of a path segment with a new previous path."""
-    if isinstance(segment, KeyPath):
-        return KeyPath(segment._dictKey, segment._default, prev_path)
-    elif isinstance(segment, IndexPath):
-        return IndexPath(segment._index, prev_path)
-    elif isinstance(segment, SlicePath):
-        return SlicePath(segment._start, segment._end, prev_path)
-    elif isinstance(segment, YieldedKeyPlusValuePath):
-        return YieldedKeyPlusValuePath(segment.valuePath, prev_path)
-    elif isinstance(segment, MultiValuePath):
-        return MultiValuePath(segment._paths, prev_path)
-    elif isinstance(segment, FilteredPath):
-        return FilteredPath(segment._conditionPath, segment._condition, prev_path)
-    elif isinstance(segment, EnsureTypePath):
-        return EnsureTypePath(segment._expected_type, prev_path)
-    elif isinstance(segment, (JsonPath, _ContinuablePath, _TerminalPath)):
-        # For base path types, create a basic _PathExecutor
-        return _Executor(prev_path)
-    else:
-        raise TypeError(f"Unknown path segment type: {type(segment)}")
