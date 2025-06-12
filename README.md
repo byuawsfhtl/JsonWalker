@@ -57,7 +57,7 @@ First user: Alice
 5. **Multi-value queries**: Extract multiple values in a single traversal with proper typing
 6. **Flexible indexing**: Support for positive/negative indices and slicing
 7. **Dictionary iteration**: Built-in support for key-value pair traversal
-8. **Path composition**: Combine and reuse path segments with PathJoin
+8. **Path composition**: Combine and reuse path segments with `.add()`
 9. **Filtering**: Include only items that meet specific conditions
 
 ## Learning JsonWalker: Step by Step
@@ -333,9 +333,8 @@ data = {
 }
 
 # Iterate through all key-value pairs
-path = JsonPath().key("scores").keyContextAndValue()
-# The keyContextAndValue() method returns tuple[str, Any] by default
-for subject, score in path.walk(data):  # Types: str, Any
+path = JsonPath().key("scores").yieldKey(JsonPath().ensureType(int))
+for subject, score in path.walk(data):  # Types: str, int
     print(f"{subject}: {score}")
 ```
 
@@ -365,8 +364,13 @@ data = {
 }
 
 # Get all subcategory names and their items with type inference
-path = JsonPath().key('categories').keyContextAndValue().keyContextAndValue().listAll().ensureType(str)
-for category, subcategory, item in path.walk(data):  # Types: str, str, str
+path = JsonPath().key('categories').yieldKey(
+    JsonPath().yieldKey(
+        JsonPath().listAll().ensureType(str)
+    )
+)
+
+for category, (subcategory, item) in path.walk(data):  # Types: str, tuple[str, str]
     print(f"{category} > {subcategory} > {item}")
 ```
 
@@ -433,54 +437,67 @@ User 123: John Doe (30) - Active - email: john@example.com
 User 123: John Doe (30) - Active - phone: 555-1234
 ```
 
-### 7. Path Joining
+### 7. Path Composition with .add()
 
-Use `PathJoin` to combine multiple reusable path segments (while maintaining type inference and safety).
+Use `.add()` to combine path segments for reusability while maintaining type inference.
 
 ```python
-from JsonWalker.walk import JsonPath, PathJoin
+from JsonWalker.walk import JsonPath
 
 data = {
-    "company": {
-        "departments": [
-            {
-                "name": "Engineering",
-                "employees": [
-                    {"name": "Alice", "role": "Developer", "salary": 75000},
-                    {"name": "Bob", "role": "Manager", "salary": 85000}
+    "current_projects": [
+        {
+            "name": "Website Redesign",
+            "team": {
+                "lead": {"name": "Alice", "email": "alice@company.com"},
+                "members": [
+                    {"name": "Bob", "email": "bob@company.com"},
+                    {"name": "Carol", "email": "carol@company.com"}
                 ]
             }
-        ]
-    }
+        }
+    ],
+    "archived_projects": [
+        {
+            "name": "Mobile App",
+            "team": {
+                "lead": {"name": "David", "email": "david@company.com"},
+                "members": [
+                    {"name": "Eve", "email": "eve@company.com"}
+                ]
+            }
+        }
+    ]
 }
 
-# Define reusable path segments
-company_path = JsonPath().key("company")
-departments_path = JsonPath().key("departments").listAll()
-employees_path = JsonPath().key("employees").listAll()
+# Define different start paths
+current_projects_path = JsonPath().key("current_projects").listAll()
+archived_projects_path = JsonPath().key("archived_projects").listAll()
 
-# Combine paths for different data types
-name_path = PathJoin(company_path, departments_path, employees_path, JsonPath().key("name").ensureType(str))
-salary_path = PathJoin(company_path, departments_path, employees_path, JsonPath().key("salary").ensureType(int))
+# Define common end path for extracting team member emails
+team_emails_path = JsonPath().key("team").key("members").listAll().key("email").ensureType(str)
+
+# Combine different starts with the same end using .add()
+current_team_emails = current_projects_path.add(team_emails_path)
+archived_team_emails = archived_projects_path.add(team_emails_path)
 
 # Use with type safety
-print("Employee names:")
-for name in name_path.walk(data):  # Type: str
-    print(f"  Employee: {name}")
-    
-print("Employee salaries:")
-for salary in salary_path.walk(data):  # Type: int
-    print(f"  Salary: ${salary:,}")
+print("Current project team emails:")
+for email in current_team_emails.walk(data):  # Type: str
+    print(f"  {email}")
+
+print("Archived project team emails:")
+for email in archived_team_emails.walk(data):  # Type: str
+    print(f"  {email}")
 ```
 
 ```
-=== Section 7: Path Joining ===
-Employee names:
-  Employee: Alice
-  Employee: Bob
-Employee salaries:
-  Salary: $75,000
-  Salary: $85,000
+=== Section 7: Path Composition ===
+Current project team emails:
+  bob@company.com
+  carol@company.com
+Archived project team emails:
+  eve@company.com
 ```
 
 ## Advanced Type Safety Features
@@ -647,31 +664,25 @@ This comprehensive type safety makes JsonWalker not just a powerful JSON travers
 
 | Method | Description | Example | Type Return |
 |--------|-------------|---------|-------------|
-| `.key(name, default=None)` | Access dictionary by key with optional default | `.key("users")` | `Key[Any]` |
-| `.listIndex(index)` | Access list by specific index | `.listIndex(0)` | `Index[Any]` |
-| `.listSlice(start, end)` | Access range of list items | `.listSlice(1, 5)` | `Slice[Any]` |
-| `.listAll()` | Access all items in a list | `.listAll()` | `Slice[Any]` |
+| `.key(name, default=None)` | Access dictionary by key with optional default | `.key("users")` | `_KeyPath[Any]` |
+| `.listIndex(index)` | Access list by specific index | `.listIndex(0)` | `_IndexPath[Any]` |
+| `.listSlice(start, end)` | Access range of list items | `.listSlice(1, 5)` | `_SlicePath[Any]` |
+| `.listAll()` | Access all items in a list | `.listAll()` | `_SlicePath[Any]` |
 
 ### Type Safety Methods
 
 | Method | Description | Example | Type Return |
 |--------|-------------|---------|-------------|
-| `.ensureType(type_class)` | Ensure value matches expected type | `.ensureType(str)` | `EnsureType[T]` |
+| `.ensureType(type_class)` | Ensure value matches expected type | `.ensureType(str)` | `_EnsureTypePath[T]` |
 
 ### Advanced Methods
 
 | Method | Description | Example | Type Return |
 |--------|-------------|---------|-------------|
-| `.filter(conditionPath, condition)` | Filter results based on a condition | `.filter(JsonPath().key('status'), lambda x: x == 'active')` | `Filter[T]` |
-| `.keyContextAndValue()` | Iterate through key-value pairs | `.keyContextAndValue()` | `KeyContextAndValue[tuple[str, Any]]` |
-| `.multi(*paths)` | Get multiple values from current context | `.multi(path1, path2)` | `MultiValue[tuple[...]]` |
-| `.addContext()` | Add current value to context | `.addContext()` | `AddedContext[T]` |
-
-### Path Utilities
-
-| Class/Method | Description | Example |
-|--------------|-------------|---------|
-| `PathJoin(*paths)` | Combine multiple path segments | `PathJoin(base_path, detail_path)` |
+| `.filter(conditionPath, condition)` | Filter results based on a condition | `.filter(JsonPath().key('status'), lambda x: x == 'active')` | `_FilteredPath[T]` |
+| `.yieldKey(valuePath)` | Iterate through key-value pairs | `.yieldKey(JsonPath().ensureType(str))` | `_YieldedKeyPlusValuePath[tuple[str, T]]` |
+| `.multi(*paths)` | Get multiple values from current context | `.multi(path1, path2)` | `_MultiValuePath[tuple[...]]` |
+| `.add(path)` | Combine current path with another path segment | `.add(JsonPath().key("name"))` | `_Executor[T]` |
 
 ## Best Practices
 
@@ -679,7 +690,7 @@ This comprehensive type safety makes JsonWalker not just a powerful JSON travers
 2. **Use meaningful variable names**: The fluent API makes code self-documenting
 3. **Provide defaults**: Use the `default` parameter to handle missing keys gracefully
 4. **Break complex queries**: Split very long chains into intermediate variables for readability
-5. **Leverage PathJoin**: Create reusable path segments for common patterns
+5. **Leverage .add()**: Create reusable path segments with path composition
 6. **Filter early**: Apply filters as early as possible in your path to improve performance
 7. **Use multi strategically**: When you need multiple related values, `.multi()` is more efficient than separate queries
 8. **Handle mixed types**: Use `ensureType()` to filter and work with specific types. This will also give your IDE the ability to infer types when using the `walk` function
