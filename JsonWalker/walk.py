@@ -88,8 +88,8 @@ class _Executor(Generic[T]):
             return
 
         if not remainingPath:
-            final_result = contexts + [current] if contexts else current
-            yield cast(T, final_result)
+            finalResult = contexts + [current] if contexts else current
+            yield cast(T, finalResult)
             return
 
         pathItem = remainingPath[0]
@@ -186,17 +186,17 @@ class _Builder:
         """
         return _FilteredPath(conditionPath, condition, self)
 
-    def ensureType(self, expected_type: Type[U]) -> "_EnsureTypePath[U]":
+    def ensureType(self, expectedType: Type[U]) -> "_EnsureTypePath[U]":
         """Creates a path segment that ensures the current value is of a specific type.\n
         This creates a terminal path segment that only yields values if they match the expected type.
         
         Args:
-            expected_type (Type[U]): the type that the current value must match
+            expectedType (Type[U]): the type that the current value must match
             
         Returns:
             _EnsureTypePath[U]: a terminal path that ensures type matching
         """
-        return _EnsureTypePath(expected_type, self)
+        return _EnsureTypePath(expectedType, self)
 
     # Multi method overloads
     @overload
@@ -289,12 +289,12 @@ class _ContinuablePath(_Executor[T], _Builder):
             _Executor[U]: a new joined path with the appropriate terminal/continuable type
         """
         isTerminal = isinstance(pathToAdd, _TerminalPath)
-        combined_path = self._combineTwoPaths(pathToAdd)
+        combinedPath = self._combineTwoPaths(pathToAdd)
 
         if isTerminal:
-            return _JoinedTerminalPath(combined_path, pathToAdd)
+            return _JoinedTerminalPath(combinedPath, pathToAdd)
         else:
-            return _JoinedContinuablePath(combined_path, pathToAdd)
+            return _JoinedContinuablePath(combinedPath, pathToAdd)
 
     def _combineTwoPaths(self, second: _Executor[Any]) -> Optional[_Executor[Any]]:
         """Combine two paths into a single chained path.\n
@@ -308,10 +308,10 @@ class _ContinuablePath(_Executor[T], _Builder):
             Optional[_Executor[Any]]: the combined path with all segments from both paths
         """
         combinedPath = None
-        # Clone segments of the first path into combined_path
+        # Clone segments of the first path into combinedPath
         for segment in self._getFullPath():
             combinedPath = self._cloneSegment(segment, combinedPath)
-        # Clone segments of the second path into combined_path
+        # Clone segments of the second path into combinedPath
         for segment in second._getFullPath():
             combinedPath = self._cloneSegment(segment, combinedPath)
         return combinedPath
@@ -508,14 +508,14 @@ class _JoinedContinuablePath(_ContinuablePath[T]):
     is continuable (non-terminal). It maintains the combined path structure while
     delegating execution logic to the template path.
     """
-    def __init__(self, combined_path: Optional[_Executor[Any]], templatePath: _Executor[T]) -> None:
+    def __init__(self, combinedPath: Optional[_Executor[Any]], templatePath: _Executor[T]) -> None:
         """Initialize the joined continuable path.
         
         Args:
-            combined_path (Optional[_Executor[Any]]): the combined path structure
+            combinedPath (Optional[_Executor[Any]]): the combined path structure
             templatePath (_Executor[T]): the template path that defines the execution behavior
         """
-        super().__init__(combined_path)
+        super().__init__(combinedPath)
         self._templatePath = templatePath
     
     def _apply(self, current: Any, remainingPath: list[_Executor[Any]], contexts: list[Any]) -> Generator[T, None, None]:
@@ -621,7 +621,7 @@ class _YieldedKeyPlusValuePath(_TerminalPath[T]):
         """Apply the key-value pair extraction to the current data.
         
         Iterates over dictionary items, applies the value path to each value, and yields
-        tuples of (key, value_result) for each result from the value path traversal.
+        tuples of (key, valueResult) for each result from the value path traversal.
         
         Args:
             current (Any): the current data element (should be a dictionary)
@@ -629,12 +629,12 @@ class _YieldedKeyPlusValuePath(_TerminalPath[T]):
             contexts (list[Any]): context information collected during traversal
             
         Yields:
-            T: Results from continuing traversal with each (key, value_result) tuple
+            T: Results from continuing traversal with each (key, valueResult) tuple
         """
         if isinstance(current, dict):
             for key, value in current.items():
-                value_results = list(self.valuePath.walk(value))
-                for result in value_results:
+                valueResults = list(self.valuePath.walk(value))
+                for result in valueResults:
                     keyValueTuple = (key, result)
                     yield from self._traverse(keyValueTuple, remainingPath, contexts)
 
