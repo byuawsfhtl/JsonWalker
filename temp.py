@@ -349,13 +349,12 @@ def section_7_path_joining():
 
     # Use with type safety
     print("Employee names:")
-    for name in name_path.walk(data):  # Type inference from IDE should be str, but it's any
+    for name in name_path.walk(data):  # Type str
         print(f"  Employee: {name}")
     
     print("Employee salaries:")
-    for salary in salary_path.walk(data):  # Type inference from IDE should be int, but it's any
+    for salary in salary_path.walk(data):  # Type int
         print(f"  Salary: ${salary:,}")
-
 
 def advanced_type_narrowing():
     """Advanced Type Safety: Type Narrowing with ensureType()"""

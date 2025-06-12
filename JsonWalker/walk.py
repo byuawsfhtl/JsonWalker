@@ -129,11 +129,6 @@ class _Builder:
         return MultiValuePath(paths, self)
 
 
-class JsonPath(_Executor[T], _Builder):
-    """Main JsonPath class - combines execution and building capabilities."""
-    pass
-
-
 class _TerminalPath(_Executor[T]):
     """Base class for path segments that cannot continue building (terminal)."""
     pass
@@ -142,10 +137,9 @@ class _TerminalPath(_Executor[T]):
 class _ContinuablePath(_Executor[T], _Builder):
     """Base class for path segments that can continue building (non-terminal)."""
     @overload
-    def add(self, path_to_add: "_TerminalPath[U]") -> "_TerminalPath[U]": ...
-
+    def add(self, path_to_add: "_TerminalPath[U]") -> "JoinedTerminalPath[U]": ...
     @overload
-    def add(self, path_to_add: "_ContinuablePath[U]") -> "_ContinuablePath[U]": ...
+    def add(self, path_to_add: "_ContinuablePath[U]") -> "JoinedContinuablePath[U]": ...
 
     def add(self, path_to_add: "_Executor[U]") -> "_Executor[U]":
         """
@@ -182,7 +176,7 @@ class _ContinuablePath(_Executor[T], _Builder):
         elif isinstance(segment, SlicePath):
             return SlicePath(segment._start, segment._end, prev_path)
         elif isinstance(segment, YieldedKeyPlusValuePath):
-            return YieldedKeyPlusValuePath(segment.valuePath, prev_path)
+            return YieldedKeyPlusValuePath(segment._valuePath, prev_path)
         elif isinstance(segment, MultiValuePath):
             return MultiValuePath(segment._paths, prev_path)
         elif isinstance(segment, FilteredPath):
@@ -194,6 +188,11 @@ class _ContinuablePath(_Executor[T], _Builder):
             return _Executor(prev_path)
         else:
             raise TypeError(f"Unknown path segment type: {type(segment)}")
+
+
+class JsonPath(_Executor[T], _Builder):
+    """Main JsonPath class to start a path"""
+    pass
 
 
 # Non-terminal path segments (can continue building)
