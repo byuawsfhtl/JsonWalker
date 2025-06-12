@@ -9,7 +9,6 @@ organized by section for easy testing and experimentation.
 To run these examples, make sure you have JsonWalker installed:
 pip install JsonWalker
 """
-
 from JsonWalker.walk import JsonPath
 
 def basic_usage_pattern():
