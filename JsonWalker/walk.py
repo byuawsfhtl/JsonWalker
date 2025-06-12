@@ -62,62 +62,62 @@ class _Executor(Generic[T]):
 class _Builder:
     """Path building functionality - creates new path segments."""
     
-    def key(self, keyName: str, default: Any = None) -> "Key[Any]":
+    def key(self, keyName: str, default: Any = None) -> "KeyPath[Any]":
         """Creates a path segment that accesses a dictionary by a specific key."""
-        return Key(keyName, default, self)
+        return KeyPath(keyName, default, self)
 
-    def listIndex(self, idx: int) -> "Index[Any]":
+    def listIndex(self, idx: int) -> "IndexPath[Any]":
         """Creates a path segment that accesses a specific index in a list."""
-        return Index(idx, self)
+        return IndexPath(idx, self)
 
-    def listSlice(self, start: Optional[int] = None, end: Optional[int] = None) -> "Slice[Any]":
+    def listSlice(self, start: Optional[int] = None, end: Optional[int] = None) -> "SlicePath[Any]":
         """Creates a path segment that accesses a range of elements in a list."""
-        return Slice(start, end, self)
+        return SlicePath(start, end, self)
 
-    def listAll(self) -> "Slice[Any]":
+    def listAll(self) -> "SlicePath[Any]":
         """Creates a path segment that accesses all elements in a list."""
-        return Slice(None, None, self)
+        return SlicePath(None, None, self)
 
-    def yieldKey(self, valuePath: '_Executor[U]') -> "YieldedKeyAndValuePath[tuple[str, U]]":
+    def yieldKey(self, valuePath: '_Executor[U]') -> "YieldedKeyPlusValuePath[tuple[str, U]]":
         """Creates a path that yields (key, value) pairs from dictionary iteration."""
-        return YieldedKeyAndValuePath(valuePath, self)
+        return YieldedKeyPlusValuePath(valuePath, self)
 
-    def filter(self, conditionPath: '_Executor[Any]', condition: Callable[[Any], bool]) -> "Filter[T]":
+    def filter(self, conditionPath: '_Executor[Any]', condition: Callable[[Any], bool]) -> "FilteredPath[T]":
         """Creates a path segment that filters results based on a condition."""
-        return Filter(conditionPath, condition, self)
+        return FilteredPath(conditionPath, condition, self)
 
-    def ensureType(self, expected_type: Type[U]) -> "EnsureType[U]":
+    def ensureType(self, expected_type: Type[U]) -> "EnsureTypePath[U]":
         """Creates a path segment that ensures the current value is of a specific type."""
-        return EnsureType(expected_type, self)
+        return EnsureTypePath(expected_type, self)
 
     # Multi method overloads
     @overload
-    def multi(self, path1: '_Executor[U]') -> "MultiValue[tuple[U]]": ...
+    def multi(self, path1: '_Executor[U]') -> "MultiValuePath[tuple[U]]": ...
     @overload
-    def multi(self, path1: '_Executor[U]', path2: '_Executor[V]') -> "MultiValue[tuple[U, V]]": ...
+    def multi(self, path1: '_Executor[U]', path2: '_Executor[V]') -> "MultiValuePath[tuple[U, V]]": ...
     @overload
-    def multi(self, path1: '_Executor[U]', path2: '_Executor[V]', path3: '_Executor[W]') -> "MultiValue[tuple[U, V, W]]": ...
+    def multi(self, path1: '_Executor[U]', path2: '_Executor[V]', path3: '_Executor[W]') -> "MultiValuePath[tuple[U, V, W]]": ...
     @overload
-    def multi(self, path1: '_Executor[U]', path2: '_Executor[V]', path3: '_Executor[W]', path4: '_Executor[X]') -> "MultiValue[tuple[U, V, W, X]]": ...
+    def multi(self, path1: '_Executor[U]', path2: '_Executor[V]', path3: '_Executor[W]', path4: '_Executor[X]') -> "MultiValuePath[tuple[U, V, W, X]]": ...
     @overload
     def multi(self, path1: '_Executor[U]', path2: '_Executor[V]', path3: '_Executor[W]', path4: '_Executor[X]', path5: '_Executor[Y]') -> "_Executor[tuple[U, V, W, X, Y]]": ...
     @overload
-    def multi(self, path1: '_Executor[U]', path2: '_Executor[V]', path3: '_Executor[W]', path4: '_Executor[X]', path5: '_Executor[Y]', path6: '_Executor[Z]') -> "MultiValue[tuple[U, V, W, X, Y, Z]]": ...
+    def multi(self, path1: '_Executor[U]', path2: '_Executor[V]', path3: '_Executor[W]', path4: '_Executor[X]', path5: '_Executor[Y]', path6: '_Executor[Z]') -> "MultiValuePath[tuple[U, V, W, X, Y, Z]]": ...
     @overload
-    def multi(self, path1: '_Executor[U]', path2: '_Executor[V]', path3: '_Executor[W]', path4: '_Executor[X]', path5: '_Executor[Y]', path6: '_Executor[Z]', path7: '_Executor[A1]') -> "MultiValue[tuple[U, V, W, X, Y, Z, A1]]": ...
+    def multi(self, path1: '_Executor[U]', path2: '_Executor[V]', path3: '_Executor[W]', path4: '_Executor[X]', path5: '_Executor[Y]', path6: '_Executor[Z]', path7: '_Executor[A1]') -> "MultiValuePath[tuple[U, V, W, X, Y, Z, A1]]": ...
     @overload
-    def multi(self, path1: '_Executor[U]', path2: '_Executor[V]', path3: '_Executor[W]', path4: '_Executor[X]', path5: '_Executor[Y]', path6: '_Executor[Z]', path7: '_Executor[A1]', path8: '_Executor[A2]') -> "MultiValue[tuple[U, V, W, X, Y, Z, A1, A2]]": ...
+    def multi(self, path1: '_Executor[U]', path2: '_Executor[V]', path3: '_Executor[W]', path4: '_Executor[X]', path5: '_Executor[Y]', path6: '_Executor[Z]', path7: '_Executor[A1]', path8: '_Executor[A2]') -> "MultiValuePath[tuple[U, V, W, X, Y, Z, A1, A2]]": ...
     @overload
-    def multi(self, path1: '_Executor[U]', path2: '_Executor[V]', path3: '_Executor[W]', path4: '_Executor[X]', path5: '_Executor[Y]', path6: '_Executor[Z]', path7: '_Executor[A1]', path8: '_Executor[A2]', path9: '_Executor[A3]') -> "MultiValue[tuple[U, V, W, X, Y, Z, A1, A2, A3]]": ...
+    def multi(self, path1: '_Executor[U]', path2: '_Executor[V]', path3: '_Executor[W]', path4: '_Executor[X]', path5: '_Executor[Y]', path6: '_Executor[Z]', path7: '_Executor[A1]', path8: '_Executor[A2]', path9: '_Executor[A3]') -> "MultiValuePath[tuple[U, V, W, X, Y, Z, A1, A2, A3]]": ...
     @overload
-    def multi(self, path1: '_Executor[U]', path2: '_Executor[V]', path3: '_Executor[W]', path4: '_Executor[X]', path5: '_Executor[Y]', path6: '_Executor[Z]', path7: '_Executor[A1]', path8: '_Executor[A2]', path9: '_Executor[A3]', path10: '_Executor[A4]') -> "MultiValue[tuple[U, V, W, X, Y, Z, A1, A2, A3, A4]]": ...
+    def multi(self, path1: '_Executor[U]', path2: '_Executor[V]', path3: '_Executor[W]', path4: '_Executor[X]', path5: '_Executor[Y]', path6: '_Executor[Z]', path7: '_Executor[A1]', path8: '_Executor[A2]', path9: '_Executor[A3]', path10: '_Executor[A4]') -> "MultiValuePath[tuple[U, V, W, X, Y, Z, A1, A2, A3, A4]]": ...
     @overload
-    def multi(self, path1: '_Executor[U]', path2: '_Executor[V]', path3: '_Executor[W]', path4: '_Executor[X]', path5: '_Executor[Y]', path6: '_Executor[Z]', path7: '_Executor[A1]', path8: '_Executor[A2]', path9: '_Executor[A3]', path10: '_Executor[A4]', path11: '_Executor[A5]') -> "MultiValue[tuple[U, V, W, X, Y, Z, A1, A2, A3, A4, A5]]": ...
+    def multi(self, path1: '_Executor[U]', path2: '_Executor[V]', path3: '_Executor[W]', path4: '_Executor[X]', path5: '_Executor[Y]', path6: '_Executor[Z]', path7: '_Executor[A1]', path8: '_Executor[A2]', path9: '_Executor[A3]', path10: '_Executor[A4]', path11: '_Executor[A5]') -> "MultiValuePath[tuple[U, V, W, X, Y, Z, A1, A2, A3, A4, A5]]": ...
     @overload
-    def multi(self, path1: '_Executor[U]', path2: '_Executor[V]', path3: '_Executor[W]', path4: '_Executor[X]', path5: '_Executor[Y]', path6: '_Executor[Z]', path7: '_Executor[A1]', path8: '_Executor[A2]', path9: '_Executor[A3]', path10: '_Executor[A4]', path11: '_Executor[A5]', path12: '_Executor[A6]') -> "MultiValue[tuple[U, V, W, X, Y, Z, A1, A2, A3, A4, A5, A6]]": ...
+    def multi(self, path1: '_Executor[U]', path2: '_Executor[V]', path3: '_Executor[W]', path4: '_Executor[X]', path5: '_Executor[Y]', path6: '_Executor[Z]', path7: '_Executor[A1]', path8: '_Executor[A2]', path9: '_Executor[A3]', path10: '_Executor[A4]', path11: '_Executor[A5]', path12: '_Executor[A6]') -> "MultiValuePath[tuple[U, V, W, X, Y, Z, A1, A2, A3, A4, A5, A6]]": ...
 
     # Default for 13+ paths (no type hinting)
-    def multi(self, *paths: 'JsonPath[Any]') -> "MultiValue[tuple[Any, ...]]":
+    def multi(self, *paths: 'JsonPath[Any]') -> "MultiValuePath[tuple[Any, ...]]":
         """Creates a path segment that collects multiple values from different sub-paths
 
         Args:
@@ -126,7 +126,7 @@ class _Builder:
         Returns:
             MultiValue: a JsonPath segment that gathers values from each of the provided paths
         """
-        return MultiValue(paths, self)
+        return MultiValuePath(paths, self)
 
 class JsonPath(_Executor[T], _Builder):
     """Main JsonPath class - combines execution and building capabilities."""
@@ -144,7 +144,7 @@ class _TerminalPath(_Executor[T]):
 
 
 # Non-terminal path segments (can continue building)
-class Key(_ContinuablePath[Any]):
+class KeyPath(_ContinuablePath[Any]):
     """Path element that accesses a dictionary key."""
 
     def __init__(self, key: str, default: Any = None, prevPath: Optional[_Executor[Any]] = None) -> None:
@@ -158,7 +158,7 @@ class Key(_ContinuablePath[Any]):
             yield from self._traverse(value, remainingPath, contexts)
 
 
-class Index(_ContinuablePath[Any]):
+class IndexPath(_ContinuablePath[Any]):
     """Path element that accesses a list by index."""
 
     def __init__(self, index: int, prevPath: Optional[_Executor[Any]] = None) -> None:
@@ -170,7 +170,7 @@ class Index(_ContinuablePath[Any]):
             yield from self._traverse(current[self._index], remainingPath, contexts)
 
 
-class Slice(_ContinuablePath[Any]):
+class SlicePath(_ContinuablePath[Any]):
     """Path element that accesses a slice of list items."""
 
     def __init__(self, start: Optional[int], end: Optional[int], prevPath: Optional[_Executor[Any]] = None) -> None:
@@ -184,7 +184,7 @@ class Slice(_ContinuablePath[Any]):
                 yield from self._traverse(item, remainingPath, contexts)
 
 
-class Filter(_ContinuablePath[T]):
+class FilteredPath(_ContinuablePath[T]):
     """Path element that filters the current value based on a condition."""
     
     def __init__(self, conditionPath: _Executor[Any], condition: Callable[[Any], bool], prevPath: Optional[_Executor[Any]] = None) -> None:
@@ -198,7 +198,7 @@ class Filter(_ContinuablePath[T]):
             yield from self._traverse(current, remainingPath, contexts)
 
 
-class EnsureType(_ContinuablePath[T]):
+class EnsureTypePath(_ContinuablePath[T]):
     """Path element that ensures the current value is of a specific type."""
     
     def __init__(self, expected_type: Type[T], prevPath: Optional[_Executor[Any]] = None) -> None:
@@ -211,7 +211,7 @@ class EnsureType(_ContinuablePath[T]):
 
 
 # Terminal path segments (cannot continue building)
-class YieldedKeyAndValuePath(_TerminalPath[T]):
+class YieldedKeyPlusValuePath(_TerminalPath[T]):
     """Path element that yields (key, value) pairs from dictionary iteration."""
     
     def __init__(self, valuePath: _Executor[Any], prevPath: Optional[_Executor[Any]] = None) -> None:
@@ -227,7 +227,7 @@ class YieldedKeyAndValuePath(_TerminalPath[T]):
                     yield from self._traverse(key_value_tuple, remainingPath, contexts)
 
 
-class MultiValue(_TerminalPath[T]):
+class MultiValuePath(_TerminalPath[T]):
     """Path element that collects values from multiple sub-paths."""
     
     def __init__(self, paths: tuple[_Executor[Any], ...], prevPath: Optional[_Executor[Any]] = None) -> None:
@@ -341,20 +341,20 @@ def _append_path(current_path: Optional[_Executor[Any]], path_to_append: _Execut
 
 def _clone_segment(segment: _Executor[Any], prev_path: Optional[_Executor[Any]]) -> _Executor[Any]:
     """Create a copy of a path segment with a new previous path."""
-    if isinstance(segment, Key):
-        return Key(segment._dictKey, segment._default, prev_path)
-    elif isinstance(segment, Index):
-        return Index(segment._index, prev_path)
-    elif isinstance(segment, Slice):
-        return Slice(segment._start, segment._end, prev_path)
-    elif isinstance(segment, YieldedKeyAndValuePath):
-        return YieldedKeyAndValuePath(segment.valuePath, prev_path)
-    elif isinstance(segment, MultiValue):
-        return MultiValue(segment._paths, prev_path)
-    elif isinstance(segment, Filter):
-        return Filter(segment._conditionPath, segment._condition, prev_path)
-    elif isinstance(segment, EnsureType):
-        return EnsureType(segment._expected_type, prev_path)
+    if isinstance(segment, KeyPath):
+        return KeyPath(segment._dictKey, segment._default, prev_path)
+    elif isinstance(segment, IndexPath):
+        return IndexPath(segment._index, prev_path)
+    elif isinstance(segment, SlicePath):
+        return SlicePath(segment._start, segment._end, prev_path)
+    elif isinstance(segment, YieldedKeyPlusValuePath):
+        return YieldedKeyPlusValuePath(segment.valuePath, prev_path)
+    elif isinstance(segment, MultiValuePath):
+        return MultiValuePath(segment._paths, prev_path)
+    elif isinstance(segment, FilteredPath):
+        return FilteredPath(segment._conditionPath, segment._condition, prev_path)
+    elif isinstance(segment, EnsureTypePath):
+        return EnsureTypePath(segment._expected_type, prev_path)
     elif isinstance(segment, (JsonPath, _ContinuablePath, _TerminalPath)):
         # For base path types, create a basic _PathExecutor
         return _Executor(prev_path)
