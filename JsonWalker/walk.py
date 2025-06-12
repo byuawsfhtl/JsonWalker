@@ -3,6 +3,11 @@ from typing import (
     Generator, Any, Optional, Callable, TypeVar, Generic,
     Union, Type, cast, overload
 )
+"""A note to future developers- trying to split this up into multiple files is not a good idea, despite its length, 
+because the ways to deal with circular dependancies break static type inference. 
+
+That is something we REALLY do not want to do.
+"""
 
 # --- Type Variables ---
 TypeForJsonLikeData = Union[dict[str, Any], list[Any]]
@@ -20,7 +25,7 @@ A4 = TypeVar('A4')
 A5 = TypeVar('A5')
 A6 = TypeVar('A6')
 
-
+# --- Core classes ---
 class _Executor(Generic[T]):
     """Core path execution functionality - handles walking and traversing paths."""
     
@@ -115,7 +120,6 @@ class _Builder:
     def multi(self, path1: '_Executor[U]', path2: '_Executor[V]', path3: '_Executor[W]', path4: '_Executor[X]', path5: '_Executor[Y]', path6: '_Executor[Z]', path7: '_Executor[A1]', path8: '_Executor[A2]', path9: '_Executor[A3]', path10: '_Executor[A4]', path11: '_Executor[A5]') -> "_MultiValuePath[tuple[U, V, W, X, Y, Z, A1, A2, A3, A4, A5]]": ...
     @overload
     def multi(self, path1: '_Executor[U]', path2: '_Executor[V]', path3: '_Executor[W]', path4: '_Executor[X]', path5: '_Executor[Y]', path6: '_Executor[Z]', path7: '_Executor[A1]', path8: '_Executor[A2]', path9: '_Executor[A3]', path10: '_Executor[A4]', path11: '_Executor[A5]', path12: '_Executor[A6]') -> "_MultiValuePath[tuple[U, V, W, X, Y, Z, A1, A2, A3, A4, A5, A6]]": ...
-
     # Default for 13+ paths (no type hinting)
     def multi(self, *paths: 'JsonPath[Any]') -> "_MultiValuePath[tuple[Any, ...]]":
         """Creates a path segment that collects multiple values from different sub-paths
@@ -129,6 +133,13 @@ class _Builder:
         return _MultiValuePath(paths, self)
 
 
+# --- class to begin a path ---
+class JsonPath(_Executor[T], _Builder):
+    """Main JsonPath class to start a path"""
+    pass
+
+
+# --- Parent classes to all path classes---
 class _TerminalPath(_Executor[T]):
     """Base class for path segments that cannot continue building (terminal)."""
     pass
@@ -187,11 +198,6 @@ class _ContinuablePath(_Executor[T], _Builder):
             return _Executor(prevPath)
         else:
             raise TypeError(f"Unknown path segment type: {type(segment)}")
-
-
-class JsonPath(_Executor[T], _Builder):
-    """Main JsonPath class to start a path"""
-    pass
 
 
 # Non-terminal path segments (can continue building)
