@@ -66,9 +66,9 @@ class _Builder:
         """Creates a path segment that accesses a dictionary by a specific key."""
         return KeyPath(keyName, default, self)
 
-    def listIndex(self, idx: int) -> "IndexPath[Any]":
+    def listIndex(self, index: int) -> "IndexPath[Any]":
         """Creates a path segment that accesses a specific index in a list."""
-        return IndexPath(idx, self)
+        return IndexPath(index, self)
 
     def listSlice(self, start: Optional[int] = None, end: Optional[int] = None) -> "SlicePath[Any]":
         """Creates a path segment that accesses a range of elements in a list."""
@@ -148,44 +148,43 @@ class _ContinuablePath(_Executor[T], _Builder):
         If the added path is terminal (e.g., `multi()` or `yieldKey()`), the resulting path cannot be extended further, and your IDE will correctly reflect this.
         """
         is_terminal = isinstance(path_to_add, _TerminalPath)
-        combined_path = self._combine_two_paths(path_to_add)
+        combined_path = self._combineTwoPaths(path_to_add)
 
         if is_terminal:
             return JoinedTerminalPath(combined_path, path_to_add)
         else:
             return JoinedContinuablePath(combined_path, path_to_add)
 
-    def _combine_two_paths(self, second: _Executor[Any]) -> Optional[_Executor[Any]]:
+    def _combineTwoPaths(self, second: _Executor[Any]) -> Optional[_Executor[Any]]:
         """Combine two paths into a single chained path."""
-        combined_path = None
+        combinedPath = None
         # Clone segments of the first path into combined_path
         for segment in self._getFullPath():
-            combined_path = self._clone_segment(segment, combined_path)
+            combinedPath = self._cloneSegment(segment, combinedPath)
         # Clone segments of the second path into combined_path
         for segment in second._getFullPath():
-            combined_path = self._clone_segment(segment, combined_path)
-        return combined_path
+            combinedPath = self._cloneSegment(segment, combinedPath)
+        return combinedPath
     
     @staticmethod
-    def _clone_segment(segment: _Executor[Any], prev_path: Optional[_Executor[Any]]) -> _Executor[Any]:
+    def _cloneSegment(segment: _Executor[Any], prevPath: Optional[_Executor[Any]]) -> _Executor[Any]:
         """Create a copy of a path segment with a new previous path."""
         if isinstance(segment, KeyPath):
-            return KeyPath(segment._dictKey, segment._default, prev_path)
+            return KeyPath(segment.dictKey, segment.default, prevPath)
         elif isinstance(segment, IndexPath):
-            return IndexPath(segment._index, prev_path)
+            return IndexPath(segment.index, prevPath)
         elif isinstance(segment, SlicePath):
-            return SlicePath(segment._start, segment._end, prev_path)
+            return SlicePath(segment.start, segment.end, prevPath)
         elif isinstance(segment, YieldedKeyPlusValuePath):
-            return YieldedKeyPlusValuePath(segment._valuePath, prev_path)
+            return YieldedKeyPlusValuePath(segment.valuePath, prevPath)
         elif isinstance(segment, MultiValuePath):
-            return MultiValuePath(segment._paths, prev_path)
+            return MultiValuePath(segment.paths, prevPath)
         elif isinstance(segment, FilteredPath):
-            return FilteredPath(segment._conditionPath, segment._condition, prev_path)
+            return FilteredPath(segment.conditionPath, segment.condition, prevPath)
         elif isinstance(segment, EnsureTypePath):
-            return EnsureTypePath(segment._expected_type, prev_path)
+            return EnsureTypePath(segment.expectedType, prevPath)
         elif isinstance(segment, (JsonPath, _ContinuablePath, _TerminalPath, _Executor)):
-            # For base path types, create a basic _PathExecutor
-            return _Executor(prev_path)
+            return _Executor(prevPath)
         else:
             raise TypeError(f"Unknown path segment type: {type(segment)}")
 
@@ -201,12 +200,12 @@ class KeyPath(_ContinuablePath[Any]):
 
     def __init__(self, key: str, default: Any = None, prevPath: Optional[_Executor[Any]] = None) -> None:
         super().__init__(prevPath)
-        self._dictKey = key
-        self._default = default
+        self.dictKey = key
+        self.default = default
 
     def _apply(self, current: Any, remainingPath: list[_Executor[Any]], contexts: list[Any]) -> Generator[Any, None, None]:
         if isinstance(current, dict):
-            value = current.get(self._dictKey, self._default)
+            value = current.get(self.dictKey, self.default)
             yield from self._traverse(value, remainingPath, contexts)
 
 
@@ -215,11 +214,11 @@ class IndexPath(_ContinuablePath[Any]):
 
     def __init__(self, index: int, prevPath: Optional[_Executor[Any]] = None) -> None:
         super().__init__(prevPath)
-        self._index = index
+        self.index = index
 
     def _apply(self, current: Any, remainingPath: list[_Executor[Any]], contexts: list[Any]) -> Generator[Any, None, None]:
-        if isinstance(current, list) and -len(current) <= self._index < len(current):
-            yield from self._traverse(current[self._index], remainingPath, contexts)
+        if isinstance(current, list) and -len(current) <= self.index < len(current):
+            yield from self._traverse(current[self.index], remainingPath, contexts)
 
 
 class SlicePath(_ContinuablePath[Any]):
@@ -227,12 +226,12 @@ class SlicePath(_ContinuablePath[Any]):
 
     def __init__(self, start: Optional[int], end: Optional[int], prevPath: Optional[_Executor[Any]] = None) -> None:
         super().__init__(prevPath)
-        self._start = start
-        self._end = end
+        self.start = start
+        self.end = end
 
     def _apply(self, current: Any, remainingPath: list[_Executor[Any]], contexts: list[Any]) -> Generator[Any, None, None]:
         if isinstance(current, list):
-            for item in current[self._start:self._end]:
+            for item in current[self.start:self.end]:
                 yield from self._traverse(item, remainingPath, contexts)
 
 
@@ -241,49 +240,49 @@ class FilteredPath(_ContinuablePath[T]):
     
     def __init__(self, conditionPath: _Executor[Any], condition: Callable[[Any], bool], prevPath: Optional[_Executor[Any]] = None) -> None:
         super().__init__(prevPath)
-        self._conditionPath = conditionPath
-        self._condition = condition
+        self.conditionPath = conditionPath
+        self.condition = condition
     
     def _apply(self, current: Any, remainingPath: list[_Executor[Any]], contexts: list[Any]) -> Generator[T, None, None]:
-        conditionResults = list(self._conditionPath.walk(current))
-        if any(self._condition(res) for res in conditionResults):
+        conditionResults = list(self.conditionPath.walk(current))
+        if any(self.condition(res) for res in conditionResults):
             yield from self._traverse(current, remainingPath, contexts)
 
 
 class JoinedContinuablePath(_ContinuablePath[T]):
     """A joined path that can continue building (when final path is non-terminal)."""
     
-    def __init__(self, combined_path: Optional[_Executor[Any]], template_path: _Executor[T]) -> None:
+    def __init__(self, combined_path: Optional[_Executor[Any]], templatePath: _Executor[T]) -> None:
         super().__init__(combined_path)
-        self._template_path = template_path
+        self._templatePath = templatePath
     
-    def _apply(self, current: Any, remaining_path: list[_Executor[Any]], contexts: list[Any]) -> Generator[T, None, None]:
+    def _apply(self, current: Any, remainingPath: list[_Executor[Any]], contexts: list[Any]) -> Generator[T, None, None]:
         # Use the template path's _apply method for the actual logic
-        yield from self._template_path._apply(current, remaining_path, contexts)
+        yield from self._templatePath._apply(current, remainingPath, contexts)
 
 
 # Terminal path segments (cannot continue building)
 class JoinedTerminalPath(_TerminalPath[T]):
     """A joined path that cannot continue building (when final path is terminal)."""
     
-    def __init__(self, combined_path: Optional[_Executor[Any]], template_path: _Executor[T]) -> None:
-        super().__init__(combined_path)
-        self._template_path = template_path
+    def __init__(self, combinedPath: Optional[_Executor[Any]], templatePath: _Executor[T]) -> None:
+        super().__init__(combinedPath)
+        self._templatePath = templatePath
     
-    def _apply(self, current: Any, remaining_path: list[_Executor[Any]], contexts: list[Any]) -> Generator[T, None, None]:
+    def _apply(self, current: Any, remainingPath: list[_Executor[Any]], contexts: list[Any]) -> Generator[T, None, None]:
         """Use the template path's _apply method for the actual logic"""
-        yield from self._template_path._apply(current, remaining_path, contexts)
+        yield from self._templatePath._apply(current, remainingPath, contexts)
 
 
 class EnsureTypePath(_TerminalPath[T]):
     """Path element that ensures the current value is of a specific type."""
     
-    def __init__(self, expected_type: Type[T], prevPath: Optional[_Executor[Any]] = None) -> None:
+    def __init__(self, expectedType: Type[T], prevPath: Optional[_Executor[Any]] = None) -> None:
         super().__init__(prevPath)
-        self._expected_type = expected_type
+        self.expectedType = expectedType
     
     def _apply(self, current: Any, remainingPath: list[_Executor[Any]], contexts: list[Any]) -> Generator[T, None, None]:
-        if isinstance(current, self._expected_type):
+        if isinstance(current, self.expectedType):
             yield from self._traverse(current, remainingPath, contexts)
 
 
@@ -292,15 +291,15 @@ class YieldedKeyPlusValuePath(_TerminalPath[T]):
     
     def __init__(self, valuePath: _Executor[Any], prevPath: Optional[_Executor[Any]] = None) -> None:
         super().__init__(prevPath)
-        self._valuePath = valuePath
+        self.valuePath = valuePath
     
     def _apply(self, current: Any, remainingPath: list[_Executor[Any]], contexts: list[Any]) -> Generator[T, None, None]:
         if isinstance(current, dict):
             for key, value in current.items():
-                value_results = list(self._valuePath.walk(value))
+                value_results = list(self.valuePath.walk(value))
                 for result in value_results:
-                    key_value_tuple = (key, result)
-                    yield from self._traverse(key_value_tuple, remainingPath, contexts)
+                    keyValueTuple = (key, result)
+                    yield from self._traverse(keyValueTuple, remainingPath, contexts)
 
 
 class MultiValuePath(_TerminalPath[T]):
@@ -308,13 +307,13 @@ class MultiValuePath(_TerminalPath[T]):
     
     def __init__(self, paths: tuple[_Executor[Any], ...], prevPath: Optional[_Executor[Any]] = None) -> None:
         super().__init__(prevPath)
-        self._paths = paths
+        self.paths = paths
     
     def _apply(self, current: Any, _: list[_Executor[Any]], __: list[Any]) -> Generator[T, None, None]:
         allResults = []
-        for path in self._paths:
-            path_results = list(path.walk(current))
-            allResults.append(path_results if path_results else [None])
+        for path in self.paths:
+            pathResults = list(path.walk(current))
+            allResults.append(pathResults if pathResults else [None])
         
         for combination in itertools.product(*allResults):
             yield cast(T, combination)

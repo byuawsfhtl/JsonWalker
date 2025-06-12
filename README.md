@@ -648,7 +648,7 @@ This comprehensive type safety makes JsonWalker not just a powerful JSON travers
 | Method | Description | Example | Type Return |
 |--------|-------------|---------|-------------|
 | `.key(name, default=None)` | Access dictionary by key with optional default | `.key("users")` | `Key[Any]` |
-| `.listIndex(idx)` | Access list by specific index | `.listIndex(0)` | `Index[Any]` |
+| `.listIndex(index)` | Access list by specific index | `.listIndex(0)` | `Index[Any]` |
 | `.listSlice(start, end)` | Access range of list items | `.listSlice(1, 5)` | `Slice[Any]` |
 | `.listAll()` | Access all items in a list | `.listAll()` | `Slice[Any]` |
 
