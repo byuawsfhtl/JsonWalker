@@ -11,7 +11,29 @@ pip install JsonWalker
 """
 
 from JsonWalker.walk import JsonPath, PathJoin
-from typing import Optional
+
+def basic_usage_pattern():
+    """Basic Usage Pattern from Quick Start"""
+    print("\n=== Basic Usage Pattern ===")
+    
+    data = {
+        "users": [
+            {"name": "Alice"},
+            {"name": "Bob"},
+            {"name": "Charlie"}
+        ]
+    }
+
+    # Create a path with type inference
+    path = JsonPath().key("users").listAll().key("name").ensureType(str)
+
+    # Use in a for loop - IDE knows 'name' is a string
+    for name in path.walk(data):
+        print(f"User: {name}")
+
+    # Or get single values
+    first_name = next(path.walk(data))
+    print(f"First user: {first_name}")
 
 
 def section_1_basic_key_access():
@@ -217,17 +239,15 @@ def section_5_dictionary_iteration():
     }
 
     # Iterate through all key-value pairs with type safety
-    path = JsonPath().key("scores").keyContextAndValue()
-    for subject, score in path.walk(data):
+    path = JsonPath().key("scores").multi(
+        JsonPath(),
+        JsonPath().yieldKey(
+            JsonPath().ensureType(int)
+        )
+    )
+    for context, (subject, score) in path.walk(data):
+        print(context)
         print(subject, score)
-
-# TODO rewrite the key() function to be getPathAtKey('the key') or some other name which can be used to get the path of the value as it currently does, or blank to go from any dictionary key to its cooresponding value path
-# TODO add a new function that is like getKeyOfDict() which has no args and always returns a string
-# TODO delete the addContext and keyContextAndValue functions
-    # path = JsonPath().key('scores').multi(
-    #     JsonPath().getPathAtKey()
-    # )
-
 
 def section_5_complex_dictionary_iteration():
     """5. More Complex Dictionary Iteration with Type Safety"""
@@ -247,8 +267,13 @@ def section_5_complex_dictionary_iteration():
     }
 
     # Get all subcategory names and their items with type inference
-    path = JsonPath().key('categories').keyContextAndValue().keyContextAndValue().listAll().ensureType(str)
-    for category, subcategory, item in path.walk(data):
+    path = JsonPath().key('categories').yieldKey(
+        JsonPath().yieldKey(
+            JsonPath().listAll().ensureType(str)
+        )
+    )
+    
+    for category, (subcategory, item) in path.walk(data):
         print(f"{category} > {subcategory} > {item}")
 
 
@@ -320,8 +345,8 @@ def section_7_path_joining():
     employees_path = JsonPath().key("employees").listAll()
 
     # Combine paths for different data types
-    name_path = PathJoin(company_path, departments_path, employees_path, JsonPath().key("name").ensureType(str))
-    salary_path = PathJoin(company_path, departments_path, employees_path, JsonPath().key("salary").ensureType(int))
+    name_path = PathJoin.join(company_path, departments_path, employees_path, JsonPath().key("name").ensureType(str))
+    salary_path = PathJoin.join(company_path, departments_path, employees_path, JsonPath().key("salary").ensureType(int))
 
     # Use with type safety
     print("Employee names:")
@@ -442,31 +467,6 @@ def complete_example():
         print(f"Order {order_id} - {customer_name}{vip_status}")
         print(f"  {item_name}: ${price} x {qty} = ${item_total}")
         print(f"  Order Total: ${total}")
-
-
-def basic_usage_pattern():
-    """Basic Usage Pattern from Quick Start"""
-    print("\n=== Basic Usage Pattern ===")
-    
-    data = {
-        "users": [
-            {"name": "Alice"},
-            {"name": "Bob"},
-            {"name": "Charlie"}
-        ]
-    }
-
-    # Create a path with type inference
-    path = JsonPath().key("users").listAll().key("name").ensureType(str)
-
-    # Use in a for loop - IDE knows 'name' is a string
-    for name in path.walk(data):
-        print(f"User: {name}")
-
-    # Or get single values
-    first_name = next(path.walk(data))
-    print(f"First user: {first_name}")
-
 
 def run_all_examples():
     """Run all examples in order"""
