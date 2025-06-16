@@ -3,13 +3,8 @@ name: Deploy and Publish
 on:
   push:
     branches: [prd, stg, dev]
-    paths-ignore: # Pushes that include only these changed files won't trigger actions
-      - "**/README.md"
-      - "**/.gitignore"
-      - "**/docs/*"
-      - "**/.github/*"
-      - "**/tests/*"
-      - "**/_version.py"  # Ignoring this ensures version updates don’t retrigger
+    paths-ignore:
+      - "**/_version.py"  # Ignoring this ensures the update-version action doesn't retrigger endlessly
 
 jobs:
   update-version:
@@ -31,7 +26,6 @@ jobs:
     if: github.ref == 'refs/heads/prd'  # Only publish when pushing to prd
     needs: update-version
     runs-on: ubuntu-latest
-
     steps:
       - uses: actions/checkout@v4
         with:
@@ -61,7 +55,6 @@ jobs:
       url: https://pypi.org/p/JsonWalker
     permissions:
       id-token: write
-
     steps:
       - uses: actions/checkout@v4  # Needed to ensure repo context
       - name: Download all the dists

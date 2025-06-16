@@ -1,26 +1,21 @@
 name: CI
 
 on:
-    pull_request:
-        branches: [prd, stg, dev]
-        paths-ignore:
-            - '**/README.md'
-            - '**/.gitignore'
-            - '**/docs/*'
-            - '**/.github/*'
+  pull_request:
+    branches: [prd, stg, dev]
 
 jobs:
-    checkMeds:
-        name: Check Meds (merge every day)
-        runs-on: ubuntu-latest
-        steps:
-            - name: Check Meds
-              uses: byuawsfhtl/MedsAction@v1.0.0
+  checkMeds:
+    name: Check Meds (merge every day)
+    runs-on: ubuntu-latest
+    steps:
+    - name: Check Meds
+      uses: byuawsfhtl/MedsAction@v1.0.0
 
-    standardCheck:
-        name: Python Standard Check
-        runs-on: ubuntu-latest
-        steps:
-            - name: Follow Python Standard
-              uses: byuawsfhtl/PythonStandardAction@v1.0.3
+  standardCheck:
+    name: Python Standard Check
+    runs-on: ubuntu-latest
+    steps:
+    - name: Follow Python Standard
+      uses: byuawsfhtl/PythonStandardAction@v1.2.0
     
