@@ -121,7 +121,7 @@ class _Builder:
         """Creates a path segment that accesses a dictionary by a specific key.
         
         Args:
-            keyName: the dictionary key to access
+            key_name: the dictionary key to access
             default: the default value to use if the key is not found; defaults to None
             
         Returns:
@@ -191,7 +191,7 @@ class _Builder:
         This creates a terminal path segment that only yields values if they match the expected type.
         
         Args:
-            expectedType: the type that the current value must match
+            expected_type: the type that the current value must match
             
         Returns:
             a terminal path that ensures type matching
@@ -655,10 +655,10 @@ class _MultiValuePath(_TerminalPath[T]):
         Yields:
             T: Each combination of results from all paths as a tuple
         """
-        allResults = []
+        all_results = []
         for path in self.paths:
             path_results = list(path.walk(current))
-            allResults.append(path_results if path_results else [None])
+            all_results.append(path_results if path_results else [None])
         
-        for combination in itertools.product(*allResults):
+        for combination in itertools.product(*all_results):
             yield cast(T, combination)
