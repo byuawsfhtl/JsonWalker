@@ -1,12 +1,12 @@
 # JsonWalker
 
-_Allows simple, quick, and easy parsing of nasty nested JSON through a fluent object-oriented tool to avoid hours of pain_
+_Allows simple, quick, and easy parsing of nasty nested JSON through a fluent object-oriented tool with full type inference to avoid hours of pain_
 
-JsonWalker's goal is to allow users to specify a path through nested JSON using a chainable, discoverable API, and get the items at each match in the JSON. The library uses generators to efficiently traverse large data structures.
+JsonWalker's goal is to allow users to specify a path through nested JSON-like data using a chainable, discoverable API, and get the items at each match in the JSON. The library uses generators to efficiently traverse large data structures while providing IDE autocompletion and type checking.
 
 ## Installation
 
-JsonWalker is a pip installable package. It is a public package, and will thus not need any special permissions to install.
+JsonWalker is a pip installable package. It is a public package hosted on [PyPi](https://pypi.org/project/JsonWalker/).
 
 ### Command Line Installation
 
@@ -27,10 +27,12 @@ As the walk command makes a generator, it can be used in multiple ways.
 ### Basic Usage Pattern
 
 ```python
-# Create a path
-path = JsonPath().key("users").listAll().key("name")
+from JsonWalker.walk import JsonPath
 
-# Use in a for loop
+# Create a path with type inference
+path = JsonPath().key("users").list_all().key("name").ensure_type(str)
+
+# Use in a for loop - IDE knows 'name' is a string
 for name in path.walk(data):
     print(name)
 
@@ -38,11 +40,31 @@ for name in path.walk(data):
 first_name = next(path.walk(data))
 ```
 
+```
+=== Basic Usage Pattern ===
+User: Alice
+User: Bob
+User: Charlie
+First user: Alice
+```
+
+## Key Features
+
+1. **Full Type Inference**: IDE autocompletion and type checking throughout your JSON traversal
+2. **Generator-based**: Efficient memory usage for large datasets
+3. **Chainable API**: Build complex queries step by step
+4. **Type-safe operations**: Ensure values match expected types with `ensure_type()`
+5. **Multi-value queries**: Extract multiple values in a single traversal with proper typing
+6. **Flexible indexing**: Support for positive/negative indices and slicing
+7. **Dictionary iteration**: Built-in support for key-value pair traversal
+8. **Path composition**: Combine and reuse path segments with `.add()`
+9. **Filtering**: Include only items that meet specific conditions
+
 ## Learning JsonWalker: Step by Step
 
-### 1. Basic Key Access
+### 1. Basic Key Access with Type Safety
 
-Start with simple dictionary navigation using `.key()`.
+Start with simple dictionary navigation using `.key()` and add type safety with `.ensure_type()`.
 
 ```python
 from JsonWalker.walk import JsonPath
@@ -55,13 +77,24 @@ data = {
     }
 }
 
-# Access user's name
-path = JsonPath().key("user").key("name")
-for name in path.walk(data):
-    print(name)  # Output: John
+# Access user's name with type inference
+path = JsonPath().key("user").key("name").ensure_type(str)
+for name in path.walk(data):  # IDE knows 'name' is str
+    print(f"Name: {name}")
+    
+# Access user's age with type inference
+age_path = JsonPath().key("user").key("age").ensure_type(int)
+for age in age_path.walk(data):  # IDE knows 'age' is int
+    print(f"Age: {age}")
 ```
 
-#### Handling Missing Keys with Defaults
+```
+=== Section 1: Basic Key Access with Type Safety ===
+Name: John
+Age: 30
+```
+
+#### Handling Missing Keys with Defaults and Type Safety
 
 ```python
 from JsonWalker.walk import JsonPath
@@ -75,17 +108,24 @@ data = {
     ]
 }
 
-# Access with defaults for missing keys
-path = JsonPath().key("users").listAll().key("name", default="Unknown")
-for name in path.walk(data):
-    print(name)  # Output: John, Jane, Unknown
+# Access with defaults and type safety
+path = JsonPath().key("users").list_all().key("name", default="Unknown").ensure_type(str)
+for name in path.walk(data):  # IDE knows 'name' is str
+    print(f"Name: {name}")
 ```
 
-### 2. Working with Lists
+```
+=== Section 1: Handling Missing Keys ===
+Name: John
+Name: Jane
+Name: Unknown
+```
 
-JsonWalker provides several ways to work with arrays.
+### 2. Working with Lists and Type Safety
 
-#### List All Items
+JsonWalker provides several ways to work with arrays with full type inference.
+
+#### List All Items with Type Safety
 
 ```python
 from JsonWalker.walk import JsonPath
@@ -94,74 +134,141 @@ data = {
     "fruits": ["apple", "banana", "cherry"]
 }
 
-path = JsonPath().key("fruits").listAll()
-for fruit in path.walk(data):
-    print(fruit)  # Output: apple, banana, cherry
+path = JsonPath().key("fruits").list_all().ensure_type(str)
+for fruit in path.walk(data):  # IDE knows 'fruit' is str
+    print(f"Fruit: {fruit}")
 ```
 
-#### Specific List Index
+```
+=== Section 2: Working with Lists and Type Safety ===
+Fruit: apple
+Fruit: banana
+Fruit: cherry
+```
+
+#### Specific List Index with Type Safety
 
 ```python
 from JsonWalker.walk import JsonPath
 
 data = {
-    "numbers": [0, 1, 2, 3, 4, 5]
+    "numbers": [0, 1, 2, 3, 4, 5],
+    "scores": [95.5, 87.2, 92.8]
 }
 
-# Get first item (index 0)
-path = JsonPath().key("numbers").listIndex(0)
-first_number = next(path.walk(data))
-print(first_number)  # Output: 0
+# Get first number as integer
+path = JsonPath().key("numbers").list_index(0).ensure_type(int)
+first_number = next(path.walk(data))  # Type: int
+print(f"First number: {first_number}")
 
-# Get last item (negative index)
-path = JsonPath().key("numbers").listIndex(-1)
-last_number = next(path.walk(data))
-print(last_number)  # Output: 5
+# Get first score as float
+score_path = JsonPath().key("scores").list_index(0).ensure_type(float)
+first_score = next(score_path.walk(data))  # Type: float
+print(f"First score: {first_score}")
 ```
 
-#### List Slicing
-
-```python
-from JsonWalker.walk import JsonPath
-
-data = {
-    "numbers": [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]
-}
-
-# Get numbers from index 2 to 5 (exclusive)
-path = JsonPath().key("numbers").listSlice(2, 6)
-for num in path.walk(data):
-    print(num)  # Output: 2, 3, 4, 5
-
-# Get the last 3 numbers
-path = JsonPath().key("numbers").listSlice(-3, None)
-for num in path.walk(data):
-    print(num)  # Output: 7, 8, 9
+```
+=== Section 2: Specific List Index ===
+First number: 0
+First score: 95.5
 ```
 
-### 3. Combining Keys and Lists
+### 3. Multi-Value Returns
 
-Most real-world JSON combines dictionaries and arrays.
+Use `.multi()` to get multiple values from the same level (with complete type safety).
+
+#### Basic Multi Example with Type Inference
 
 ```python
 from JsonWalker.walk import JsonPath
 
 data = {
     "users": [
-        {"name": "John", "age": 30},
-        {"name": "Jane", "age": 25}
+        {
+            "profile": {
+                "firstName": "John",
+                "lastName": "Doe",
+                "age": 30
+            }
+        },
+        {
+            "profile": {
+                "firstName": "Jane",
+                "lastName": "Smith",
+                "age": 25
+            }
+        }
     ]
 }
 
-# Get all user names
-path = JsonPath().key("users").listAll().key("name")
-for name in path.walk(data):
-    print(name)  # Output: John, Jane
+# Get first name, last name, and age with type inference
+path = JsonPath().key("users").list_all().key("profile").multi(
+    JsonPath().key("firstName").ensure_type(str),
+    JsonPath().key("lastName").ensure_type(str),
+    JsonPath().key("age").ensure_type(int)
+)
+
+for firstName, lastName, age in path.walk(data):  # IDE knows types: str, str, int
+    print(f"{firstName} {lastName} is {age} years old")
 ```
 
-### 4. Filtering Results
+```
+=== Section 3: Basic Multi Example ===
+John Doe is 30 years old
+Jane Smith is 25 years old
+```
 
-Use `.filter()` to include only items that meet certain conditions.
+#### Complex Multi with Nested Types
+
+```python
+from JsonWalker.walk import JsonPath
+
+data = {
+    "products": [
+        {
+            "info": {
+                "name": "Laptop",
+                "price": 999.99,
+                "inStock": True,
+                "tags": ["electronics", "computer", "portable"]
+            }
+        },
+        {
+            "info": {
+                "name": "Book",
+                "price": 15.50,
+                "inStock": False,
+                "tags": ["education", "reading"]
+            }
+        }
+    ]
+}
+
+# Get name, price, stock status, and all tags with type safety
+path = JsonPath().key("products").list_all().key("info").multi(
+    JsonPath().key("name").ensure_type(str),
+    JsonPath().key("price").ensure_type(float),
+    JsonPath().key("inStock").ensure_type(bool),
+    JsonPath().key("tags").list_all().ensure_type(str)
+)
+
+for name, price, in_stock, tag in path.walk(data):  # Types: str, float, bool, str
+    status = "Available" if in_stock else "Out of Stock"
+    print(f"{name} (${price}) - {status} - Tag: {tag}")
+```
+
+```
+=== Section 3: Complex Multi with Nested Types ===
+Laptop ($999.99) - Available - Tag: electronics
+Laptop ($999.99) - Available - Tag: computer
+Laptop ($999.99) - Available - Tag: portable
+Book ($15.5) - Out of Stock - Tag: education
+Book ($15.5) - Out of Stock - Tag: reading
+```
+
+### 4. Filtering
+
+Use `.filter()` to include only items that meet certain conditions
 
 ```python
 from JsonWalker.walk import JsonPath
@@ -171,69 +278,48 @@ data = {
         {
             "name": "Laptop",
             "category": "electronics",
-            "price": 999
+            "price": 999.99,
+            "rating": 4.5
         },
         {
             "name": "Book",
             "category": "books", 
-            "price": 15
+            "price": 15.50,
+            "rating": 4.8
         },
         {
             "name": "Phone",
             "category": "electronics",
-            "price": 699
+            "price": 699.99,
+            "rating": 4.2
         }
     ]
 }
 
-# Get names of only electronic products
-path = JsonPath().key('products').listAll().filter(
-    conditionPath=JsonPath().key('category'),
+# Get names and prices of highly-rated electronic products
+path = JsonPath().key('products').list_all().filter(
+    condition_path=JsonPath().key('category').ensure_type(str),
     condition=lambda x: x == 'electronics'
-).key('name')
+).filter(
+    condition_path=JsonPath().key('rating').ensure_type(float),
+    condition=lambda x: x > 4.3
+).multi(
+    JsonPath().key('name').ensure_type(str),
+    JsonPath().key('price').ensure_type(float)
+)
 
-for product_name in path.walk(data):
-    print(product_name)  # Output: Laptop, Phone
+for product_name, price in path.walk(data):  # Types: str, float
+    print(f"{product_name}: ${price}")
 ```
 
-#### Complex Filtering Example
-
-```python
-from JsonWalker.walk import JsonPath
-
-data = {
-    "employees": [
-        {
-            "name": "Alice",
-            "department": {"name": "Engineering", "budget": 50000},
-            "salary": 75000
-        },
-        {
-            "name": "Bob", 
-            "department": {"name": "Marketing", "budget": 30000},
-            "salary": 65000
-        },
-        {
-            "name": "Charlie",
-            "department": {"name": "Engineering", "budget": 50000},
-            "salary": 80000
-        }
-    ]
-}
-
-# Get names of employees in high-budget departments
-path = JsonPath().key('employees').listAll().filter(
-    conditionPath=JsonPath().key('department').key('budget'),
-    condition=lambda x: x > 40000
-).key('name')
-
-for name in path.walk(data):
-    print(name)  # Output: Alice, Charlie
+```
+=== Section 4: Filtering with Type Safety ===
+Laptop: $999.99
 ```
 
-### 5. Dictionary Iteration with keyContextAndValue
+### 5. Dictionary Iteration with Type Safety
 
-When you need to iterate through all key-value pairs in a dictionary.
+When you need to iterate through all key-value pairs in a dictionary with type inference.
 
 ```python
 from JsonWalker.walk import JsonPath
@@ -247,13 +333,13 @@ data = {
 }
 
 # Iterate through all key-value pairs
-path = JsonPath().key("scores").keyContextAndValue()
-for subject, score in path.walk(data):
+path = JsonPath().key("scores").yield_key(JsonPath().ensure_type(int))
+for subject, score in path.walk(data):  # Types: str, int
     print(f"{subject}: {score}")
 ```
 
-Output:
 ```
+=== Section 5: Dictionary Iteration ===
 math: 95
 science: 87
 english: 92
@@ -277,14 +363,19 @@ data = {
     }
 }
 
-# Get all subcategory names and their items
-path = JsonPath().key('categories').keyContextAndValue().keyContextAndValue().listAll()
-for category, subcategory, item in path.walk(data):
+# Get all subcategory names and their items with type inference
+path = JsonPath().key('categories').yield_key(
+    JsonPath().yield_key(
+        JsonPath().list_all().ensure_type(str)
+    )
+)
+
+for category, (subcategory, item) in path.walk(data):  # Types: str, tuple[str, str]
     print(f"{category} > {subcategory} > {item}")
 ```
 
-Output:
 ```
+=== Section 5: Complex Dictionary Iteration ===
 electronics > computers > laptop
 electronics > computers > desktop
 electronics > phones > smartphone
@@ -295,283 +386,7 @@ books > non-fiction > biography
 books > non-fiction > textbook
 ```
 
-### 6. Multi-Value Returns
-
-Use `.multi()` to get multiple values from the same level in a single traversal.
-
-#### Basic Multi Example
-
-```python
-from JsonWalker.walk import JsonPath
-
-data = {
-    "users": [
-        {
-            "profile": {
-                "firstName": "John",
-                "lastName": "Doe"
-            }
-        },
-        {
-            "profile": {
-                "firstName": "Jane",
-                "lastName": "Smith"
-            }
-        }
-    ]
-}
-
-# Get both first and last name in one query
-path = JsonPath().key("users").listAll().key("profile").multi(
-    JsonPath().key("firstName"),
-    JsonPath().key("lastName")
-)
-
-for firstName, lastName in path.walk(data):
-    print(f"{firstName} {lastName}")
-```
-
-Output:
-```
-John Doe
-Jane Smith
-```
-
-#### Multi with Different Data Types
-
-```python
-from JsonWalker.walk import JsonPath
-
-data = {
-    "products": [
-        {
-            "info": {
-                "name": "Laptop",
-                "price": 999,
-                "tags": ["electronics", "computer", "portable"]
-            }
-        },
-        {
-            "info": {
-                "name": "Book",
-                "price": 15,
-                "tags": ["education", "reading"]
-            }
-        }
-    ]
-}
-
-# Get name, price, and all tags for each product
-path = JsonPath().key("products").listAll().key("info").multi(
-    JsonPath().key("name"),
-    JsonPath().key("price"),
-    JsonPath().key("tags").listAll()
-)
-
-for name, price, tag in path.walk(data):
-    print(f"{name} (${price}) - {tag}")
-```
-
-Output:
-```
-Laptop ($999) - electronics
-Laptop ($999) - computer
-Laptop ($999) - portable
-Book ($15) - education
-Book ($15) - reading
-```
-
-#### Multi with Nested Objects
-
-```python
-from JsonWalker.walk import JsonPath
-
-data = {
-    "employees": [
-        {
-            "personal": {
-                "name": "Alice",
-                "age": 30
-            },
-            "work": {
-                "department": "Engineering",
-                "position": "Senior Developer"
-            },
-            "skills": ["Python", "JavaScript", "SQL"]
-        }
-    ]
-}
-
-# Get personal info, work info, and skills all at once
-path = JsonPath().key("employees").listAll().multi(
-    JsonPath().key("personal").key("name"),
-    JsonPath().key("work").key("department"),
-    JsonPath().key("skills").listAll()
-)
-
-for name, department, skill in path.walk(data):
-    print(f"{name} from {department} knows {skill}")
-```
-
-Output:
-```
-Alice from Engineering knows Python
-Alice from Engineering knows JavaScript
-Alice from Engineering knows SQL
-```
-
-#### Complex Multi Example
-
-```python
-from JsonWalker.walk import JsonPath
-
-data = {
-    "schools": [
-        {
-            "name": "Tech University",
-            "departments": [
-                {
-                    "name": "Computer Science",
-                    "courses": [
-                        {"code": "CS101", "title": "Intro to Programming"},
-                        {"code": "CS201", "title": "Data Structures"}
-                    ]
-                }
-            ],
-            "location": {"city": "Tech City", "state": "CA"}
-        }
-    ]
-}
-
-# Get school info and all course details
-path = JsonPath().key("schools").listAll().multi(
-    JsonPath().key("name"),
-    JsonPath().key("location").key("city"),
-    JsonPath().key("departments").listAll().key("courses").listAll().multi(
-        JsonPath().key("code"),
-        JsonPath().key("title")
-    )
-)
-
-for school_name, city, (course_code, course_title) in path.walk(data):
-    print(f"{school_name} in {city}: {course_code} - {course_title}")
-```
-
-Output:
-```
-Tech University in Tech City: CS101 - Intro to Programming
-Tech University in Tech City: CS201 - Data Structures
-```
-
-### 7. Path Joining
-
-Use `PathJoin` to combine multiple reusable path segments.
-
-```python
-from JsonWalker.walk import JsonPath, PathJoin
-
-data = {
-    "company": {
-        "departments": [
-            {
-                "name": "Engineering",
-                "employees": [
-                    {"name": "Alice", "role": "Developer"},
-                    {"name": "Bob", "role": "Manager"}
-                ]
-            }
-        ]
-    }
-}
-
-# Define reusable path segments
-company_path = JsonPath().key("company")
-departments_path = JsonPath().key("departments").listAll()
-employee_name_path = JsonPath().key("employees").listAll().key("name")
-
-# Combine paths using PathJoin
-full_path = PathJoin(company_path, departments_path, employee_name_path)
-
-for name in full_path.walk(data):
-    print(name)  # Output: Alice, Bob
-```
-
-#### PathJoin for Complex Reusable Patterns
-
-```python
-from JsonWalker.walk import JsonPath, PathJoin
-
-data = {
-    "api_response": {
-        "data": {
-            "users": [
-                {
-                    "profile": {"name": "John", "email": "john@example.com"},
-                    "settings": {"theme": "dark", "notifications": True}
-                }
-            ]
-        }
-    }
-}
-
-# Define common path segments
-api_base = JsonPath().key("api_response").key("data")
-user_list = JsonPath().key("users").listAll()
-profile_section = JsonPath().key("profile")
-
-# Combine for different use cases
-name_path = PathJoin(api_base, user_list, profile_section, JsonPath().key("name"))
-email_path = PathJoin(api_base, user_list, profile_section, JsonPath().key("email"))
-
-# Use the combined paths
-for name in name_path.walk(data):
-    print(f"Name: {name}")
-    
-for email in email_path.walk(data):
-    print(f"Email: {email}")
-```
-
-Output:
-```
-Name: John
-Email: john@example.com
-```
-
-## API Reference
-
-### Core Methods
-
-| Method | Description |
-|--------|-------------|
-| `JsonPath()` | Start a new JSON path query chain |
-| `.walk(data)` | Execute the path query on JSON data as a Generator |
-
-### Basic Path Building
-
-| Method | Description | Example |
-|--------|-------------|---------|
-| `.key(name, default=None)` | Access dictionary by key with optional default | `.key("users", default=[])` |
-| `.listIndex(idx)` | Access list by specific index (supports negative) | `.listIndex(0)` or `.listIndex(-1)` |
-| `.listSlice(start, end)` | Access range of list items | `.listSlice(1, 5)` |
-| `.listAll()` | Access all items in a list | `.listAll()` |
-
-### Advanced Methods
-
-| Method | Description | Example |
-|--------|-------------|---------|
-| `.filter(conditionPath, condition)` | Filter results based on a condition | `.filter(JsonPath().key('status'), lambda x: x == 'active')` |
-| `.keyContextAndValue()` | Iterate through key-value pairs of dictionaries | `.keyContextAndValue()` |
-| `.multi(*paths)` | Get multiple values from the current context | `.multi(JsonPath().key('name'), JsonPath().key('age'))` |
-
-### Path Utilities
-
-| Class/Method | Description | Example |
-|--------------|-------------|---------|
-| `PathJoin(*paths)` | Combine multiple path segments into one | `PathJoin(base_path, detail_path)` |
-
-## Real-World Examples
-
-### Processing API Response
+### 6. Real-World Example: Processing API Response
 
 ```python
 from JsonWalker.walk import JsonPath
@@ -581,9 +396,11 @@ api_response = {
     "results": [
         {
             "user": {
-                "id": "123",
+                "id": 123,
                 "profile": {
                     "name": "John Doe",
+                    "age": 30,
+                    "active": True,
                     "contacts": [
                         {"type": "email", "value": "john@example.com"},
                         {"type": "phone", "value": "555-1234"}
@@ -594,78 +411,286 @@ api_response = {
     ]
 }
 
-# Extract all contact information
-path = JsonPath().key("results").listAll().key("user").key("profile").key("contacts").listAll().multi(
-    JsonPath().key("type"),
-    JsonPath().key("value")
+# Extract all user information with complete type safety
+path = JsonPath().key("results").list_all().key("user").multi(
+    JsonPath().key("id").ensure_type(int),
+    JsonPath().key("profile").multi(
+        JsonPath().key("name").ensure_type(str),
+        JsonPath().key("age").ensure_type(int),
+        JsonPath().key("active").ensure_type(bool),
+        JsonPath().key("contacts").list_all().multi(
+            JsonPath().key("type").ensure_type(str),
+            JsonPath().key("value").ensure_type(str)
+        )
+    )
 )
 
-for contact_type, contact_value in path.walk(api_response):
-    print(f"{contact_type}: {contact_value}")
+for user_id, (name, age, active, (contact_type, contact_value)) in path.walk(api_response):
+    # IDE knows all the types: int, str, int, bool, str, str
+    status = "Active" if active else "Inactive"
+    print(f"User {user_id}: {name} ({age}) - {status} - {contact_type}: {contact_value}")
 ```
 
-Output:
 ```
-email: john@example.com
-phone: 555-1234
+=== Section 6: Real-World API Response Example ===
+User 123: John Doe (30) - Active - email: john@example.com
+User 123: John Doe (30) - Active - phone: 555-1234
 ```
 
-### Handling Inconsistent Data Structures
+### 7. Path Composition with .add()
+
+Use `.add()` to combine path segments for reusability while maintaining type inference.
 
 ```python
 from JsonWalker.walk import JsonPath
 
-# Real-world data often has inconsistent structure
 data = {
-    "categories": {
-        "electronics": {
-            "computers": {
-                "laptops": ["MacBook", "ThinkPad"],
-                "desktops": ["iMac", "HP Pavilion"]
+    "current_projects": [
+        {
+            "name": "Website Redesign",
+            "team": {
+                "lead": {"name": "Alice", "email": "alice@company.com"},
+                "members": [
+                    {"name": "Bob", "email": "bob@company.com"},
+                    {"name": "Carol", "email": "carol@company.com"}
+                ]
             }
-        },
-        "books": ["Python Guide", "JavaScript Handbook"]  # Direct array, no subcategories
-    }
+        }
+    ],
+    "archived_projects": [
+        {
+            "name": "Mobile App",
+            "team": {
+                "lead": {"name": "David", "email": "david@company.com"},
+                "members": [
+                    {"name": "Eve", "email": "eve@company.com"}
+                ]
+            }
+        }
+    ]
 }
 
-# Handle electronics (nested structure)
-electronics_path = JsonPath().key('categories').key('electronics').keyContextAndValue().keyContextAndValue().listAll()
-for category, subcategory, item in electronics_path.walk(data):
-    print(f"Electronics > {subcategory} > {item}")
+# Define different start paths
+current_projects_path = JsonPath().key("current_projects").list_all()
+archived_projects_path = JsonPath().key("archived_projects").list_all()
 
-# Handle books (direct array)
-books_path = JsonPath().key('categories').key('books').listAll()
-for book in books_path.walk(data):
-    print(f"Books > {book}")
+# Define common end path for extracting team member emails
+team_emails_path = JsonPath().key("team").key("members").list_all().key("email").ensure_type(str)
+
+# Combine different starts with the same end using .add()
+current_team_emails = current_projects_path.add(team_emails_path)
+archived_team_emails = archived_projects_path.add(team_emails_path)
+
+# Use with type safety
+print("Current project team emails:")
+for email in current_team_emails.walk(data):  # Type: str
+    print(f"  {email}")
+
+print("Archived project team emails:")
+for email in archived_team_emails.walk(data):  # Type: str
+    print(f"  {email}")
 ```
 
-Output:
 ```
-Electronics > laptops > MacBook
-Electronics > laptops > ThinkPad
-Electronics > desktops > iMac
-Electronics > desktops > HP Pavilion
-Books > Python Guide
-Books > JavaScript Handbook
+=== Section 7: Path Composition ===
+Current project team emails:
+  bob@company.com
+  carol@company.com
+Archived project team emails:
+  eve@company.com
 ```
 
-## Key Features
+## Advanced Type Safety Features
 
-1. **Generator-based**: Efficient memory usage for large datasets
-2. **Chainable API**: Build complex queries step by step
-3. **Type-safe defaults**: Specify fallback values with proper types
-4. **Multi-value queries**: Extract multiple values in a single traversal
-5. **Flexible indexing**: Support for positive/negative indices and slicing
-6. **Dictionary iteration**: Built-in support for key-value pair traversal
-7. **Path composition**: Combine and reuse path segments with PathJoin
-8. **Filtering**: Include only items that meet specific conditions
+### Type Narrowing with ensure_type()
+
+The `ensure_type()` method filters out values that don't match the expected type and provides type inference. You don't need to use it at the end of your paths- the only consequence is that your variable will just have return type of `any`. Type hinting is nice though, which is why this demo has it for all the examples.
+
+```python
+from JsonWalker.walk import JsonPath
+
+# Mixed data types
+data = {
+    "mixed_values": [
+        "string_value",
+        42,
+        3.14,
+        True,
+        {"nested": "object"},
+        [1, 2, 3]
+    ]
+}
+
+# Extract only strings
+print("Strings:")
+string_path = JsonPath().key("mixed_values").list_all().ensure_type(str)
+for value in string_path.walk(data):  # Type: str
+    print(f"  String: {value}")
+
+# Extract only numbers (integers)
+print("Integers:")
+int_path = JsonPath().key("mixed_values").list_all().ensure_type(int)
+for value in int_path.walk(data):  # Type: int
+    print(f"  Integer: {value}")
+
+# Extract only dictionaries
+print("Dictionaries:")
+dict_path = JsonPath().key("mixed_values").list_all().ensure_type(dict)
+for value in dict_path.walk(data):  # Type: dict
+    print(f"  Dictionary: {value}")
+```
+
+```
+=== Advanced: Type Narrowing ===
+Strings:
+  String: string_value
+Integers:
+  Integer: 42
+  Integer: True
+Dictionaries:
+  Dictionary: {'nested': 'object'}
+```
+
+The above example is a great way to demo the cursed knowledge that `True` is actually an `int` in Python.
+
+### Working with Optional Values
+
+```python
+from JsonWalker.walk import JsonPath
+from typing import Optional
+
+data = {
+    "users": [
+        {"name": "John", "email": "john@example.com"},
+        {"name": "Jane"},  # No email
+        {"name": "Bob", "email": None}  # Explicit None
+    ]
+}
+
+# Handle optional emails
+path = JsonPath().key("users").list_all().multi(
+    JsonPath().key("name").ensure_type(str),
+    JsonPath().key("email", default=None)  # May be None or string
+)
+
+for name, email in path.walk(data):  # Types: str, Any
+    if isinstance(email, str):  # Type narrowing
+        print(f"{name}: {email}")
+    else:
+        print(f"{name}: No email")
+```
+
+```
+=== Advanced: Optional Values ===
+John: john@example.com
+Jane: No email
+Bob: No email
+```
+
+### Example: Complete Type-Safe Data Processing
+
+```python
+from JsonWalker.walk import JsonPath
+
+# Complex e-commerce data
+data = {
+    "orders": [
+        {
+            "id": "ORD-001",
+            "customer": {
+                "name": "Alice Johnson",
+                "email": "alice@example.com",
+                "vip": True
+            },
+            "items": [
+                {"name": "Laptop", "price": 999.99, "quantity": 1},
+                {"name": "Mouse", "price": 29.99, "quantity": 2}
+            ],
+            "total": 1059.97,
+            "status": "completed"
+        }
+    ]
+}
+
+# Extract complete order information with full type safety
+path = JsonPath().key("orders").list_all().filter(
+    condition_path=JsonPath().key("status").ensure_type(str),
+    condition=lambda x: x == "completed"
+).multi(
+    JsonPath().key("id").ensure_type(str),
+    JsonPath().key("customer").multi(
+        JsonPath().key("name").ensure_type(str),
+        JsonPath().key("vip").ensure_type(bool)
+    ),
+    JsonPath().key("items").list_all().multi(
+        JsonPath().key("name").ensure_type(str),
+        JsonPath().key("price").ensure_type(float),
+        JsonPath().key("quantity").ensure_type(int)
+    ),
+    JsonPath().key("total").ensure_type(float)
+)
+
+for order_id, (customer_name, is_vip), (item_name, price, qty), total in path.walk(data):
+    # All types are properly inferred: str, str, bool, str, float, int, float
+    vip_status = " (VIP)" if is_vip else ""
+    item_total = price * qty
+    print(f"Order {order_id} - {customer_name}{vip_status}")
+    print(f"  {item_name}: ${price} x {qty} = ${item_total}")
+    print(f"  Order Total: ${total}")
+```
+
+```
+=== Complete Example: E-commerce Data Processing ===
+Order ORD-001 - Alice Johnson (VIP)
+  Laptop: $999.99 x 1 = $999.99
+  Order Total: $1059.97
+Order ORD-001 - Alice Johnson (VIP)
+  Mouse: $29.99 x 2 = $59.98
+  Order Total: $1059.97
+```
+
+This comprehensive type safety makes JsonWalker not just a powerful JSON traversal tool, but also a type-safe one that integrates seamlessly with modern Python development workflows and IDE features.
+
+## API Reference
+
+### Core Methods
+
+| Method | Description | Type Return |
+|--------|-------------|-------------|
+| `JsonPath()` | Start a new JSON path query chain | `JsonPath[Any]` |
+| `.walk(data)` | Execute the path query on JSON data as a Generator | `Generator[T, None, None]` |
+
+### Basic Path Building
+
+| Method | Description | Example | Type Return |
+|--------|-------------|---------|-------------|
+| `.key(name, default=None)` | Access dictionary by key with optional default | `.key("users")` | `_KeyPath[Any]` |
+| `.list_index(index)` | Access list by specific index | `.list_index(0)` | `_IndexPath[Any]` |
+| `.list_slice(start, end)` | Access range of list items | `.list_slice(1, 5)` | `_SlicePath[Any]` |
+| `.list_all()` | Access all items in a list | `.list_all()` | `_SlicePath[Any]` |
+
+### Type Safety Methods
+
+| Method | Description | Example | Type Return |
+|--------|-------------|---------|-------------|
+| `.ensure_type(type_class)` | Ensure value matches expected type | `.ensure_type(str)` | `_ensure_typePath[T]` |
+
+### Advanced Methods
+
+| Method | Description | Example | Type Return |
+|--------|-------------|---------|-------------|
+| `.filter(condition_path, condition)` | Filter results based on a condition | `.filter(JsonPath().key('status'), lambda x: x == 'active')` | `_FilteredPath[T]` |
+| `.yield_key(valuePath)` | Iterate through key-value pairs | `.yield_key(JsonPath().ensure_type(str))` | `_YieldedKeyPlusValuePath[tuple[str, T]]` |
+| `.multi(*paths)` | Get multiple values from current context | `.multi(path1, path2)` | `_MultiValuePath[tuple[...]]` |
+| `.add(path)` | Combine current path with another path segment | `.add(JsonPath().key("name"))` | `_Executor[T]` |
 
 ## Best Practices
 
-1. **Start simple**: Begin with basic `.key()` and `.listAll()` operations
+1. **Start simple**: Begin with basic `.key()` and `.list_all()` operations
 2. **Use meaningful variable names**: The fluent API makes code self-documenting
 3. **Provide defaults**: Use the `default` parameter to handle missing keys gracefully
 4. **Break complex queries**: Split very long chains into intermediate variables for readability
-5. **Leverage PathJoin**: Create reusable path segments for common patterns
+5. **Leverage .add()**: Create reusable path segments with path composition
 6. **Filter early**: Apply filters as early as possible in your path to improve performance
 7. **Use multi strategically**: When you need multiple related values, `.multi()` is more efficient than separate queries
+8. **Handle mixed types**: Use `ensure_type()` to filter and work with specific types. This will also give your IDE the ability to infer types when using the `walk` function
