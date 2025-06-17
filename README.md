@@ -62,7 +62,7 @@ First user: Alice
 
 ## Learning JsonWalker: Step by Step
 
-### 1. Basic Key Access with Type Safety
+### 1. Basic Key Access with
 
 Start with simple dictionary navigation using `.key()` and add type safety with `.ensure_type()`.
 
@@ -94,7 +94,7 @@ Name: John
 Age: 30
 ```
 
-#### Handling Missing Keys with Defaults and Type Safety
+#### Handling Missing Keys with Defaults
 
 ```python
 from JsonWalker.walk import JsonPath
@@ -121,11 +121,11 @@ Name: Jane
 Name: Unknown
 ```
 
-### 2. Working with Lists and Type Safety
+### 2. Working with Lists
 
 JsonWalker provides several ways to work with arrays with full type inference.
 
-#### List All Items with Type Safety
+#### List All Items
 
 ```python
 from JsonWalker.walk import JsonPath
@@ -171,6 +171,183 @@ print(f"First score: {first_score}")
 === Section 2: Specific List Index ===
 First number: 0
 First score: 95.5
+```
+
+### Working with list_slice
+
+The `list_slice()` method allows you to access specific ranges of elements from lists, following Python's slice notation rules. Understanding the inclusive/exclusive behavior and negative indexing is crucial for effective use.
+
+#### Understanding Slice Behavior with Numbered Data
+
+```python
+from JsonWalker.walk import JsonPath
+
+# Sample data with numbered items to demonstrate slice behavior
+data = {
+    "items": [
+        {"id": 0, "name": "item_zero"},
+        {"id": 1, "name": "item_one"},
+        {"id": 2, "name": "item_two"},
+        {"id": 3, "name": "item_three"},
+        {"id": 4, "name": "item_four"},
+        {"id": 5, "name": "item_five"},
+        {"id": 6, "name": "item_six"},
+        {"id": 7, "name": "item_seven"},
+        {"id": 8, "name": "item_eight"},
+        {"id": 9, "name": "item_nine"}
+    ]
+}
+
+# Basic slice: start=2, end=5 (inclusive start, exclusive end)
+# Gets indices 2, 3, 4 (NOT 5)
+path = JsonPath().key("items").list_slice(2, 5).key("name").ensure_type(str)
+print("Slice [2:5] (items 2, 3, 4):")
+for name in path.walk(data):
+    print(f"  {name}")
+```
+
+```
+=== list_slice: Basic Range ===
+Slice [2:5] (items 2, 3, 4):
+  item_two
+  item_three
+  item_four
+```
+
+#### From Start and To End
+
+```python
+from JsonWalker.walk import JsonPath
+
+# Same data as above
+
+# From beginning to index 3 (exclusive)
+start_path = JsonPath().key("items").list_slice(None, 3).key("id").ensure_type(int)
+print("From start to index 3 [None:3]:")
+for item_id in start_path.walk(data):
+    print(f"  ID: {item_id}")
+
+print()
+
+# From index 7 to end
+end_path = JsonPath().key("items").list_slice(7, None).key("id").ensure_type(int)
+print("From index 7 to end [7:None]:")
+for item_id in end_path.walk(data):
+    print(f"  ID: {item_id}")
+```
+
+```
+=== list_slice: Start and End Boundaries ===
+From start to index 3 [None:3]:
+  ID: 0
+  ID: 1
+  ID: 2
+
+From index 7 to end [7:None]:
+  ID: 7
+  ID: 8
+  ID: 9
+```
+
+#### Negative Indexing
+
+```python
+from JsonWalker.walk import JsonPath
+
+# Same data as above
+
+# Last 3 items using negative indexing
+negative_path = JsonPath().key("items").list_slice(-3, None).multi(
+    JsonPath().key("id").ensure_type(int),
+    JsonPath().key("name").ensure_type(str)
+)
+print("Last 3 items [-3:None]:")
+for item_id, name in negative_path.walk(data):
+    print(f"  ID {item_id}: {name}")
+
+print()
+
+# From index 2 to 3rd from end (exclusive)
+mixed_path = JsonPath().key("items").list_slice(2, -2).key("id").ensure_type(int)
+print("From index 2 to 3rd from end [2:-2]:")
+for item_id in mixed_path.walk(data):
+    print(f"  ID: {item_id}")
+```
+
+```
+=== list_slice: Negative Indexing ===
+Last 3 items [-3:None]:
+  ID 7: item_seven
+  ID 8: item_eight
+  ID 9: item_nine
+
+From index 2 to 3rd from end [2:-2]:
+  ID: 2
+  ID: 3
+  ID: 4
+  ID: 5
+  ID: 6
+  ID: 7
+```
+
+### Key Points About list_slice
+
+- **Start is inclusive**: `list_slice(2, 5)` includes index 2
+- **End is exclusive**: `list_slice(2, 5)` does NOT include index 5
+- **None means boundary**: `list_slice(None, 3)` starts from beginning, `list_slice(7, None)` goes to end
+- **Negative indices count from end**: `-1` is the last item, `-2` is second to last, etc.
+- **Same as Python slicing**: `list_slice(2, 5)` behaves exactly like `my_list[2:5]`
+- **Empty results are safe**: Out-of-bounds slices return no results rather than errors
+
+#### Comparison with Other List Methods
+
+```python
+from JsonWalker.walk import JsonPath
+
+# Sample data for comparison
+small_data = {
+    "numbers": [10, 20, 30, 40, 50]
+}
+
+# list_all() - gets everything
+all_path = JsonPath().key("numbers").list_all().ensure_type(int)
+print("list_all():")
+for num in all_path.walk(small_data):
+    print(f"  {num}")
+
+print()
+
+# list_index() - gets single item
+index_path = JsonPath().key("numbers").list_index(2).ensure_type(int)
+print("list_index(2):")
+for num in index_path.walk(small_data):
+    print(f"  {num}")
+
+print()
+
+# list_slice() - gets range
+slice_path = JsonPath().key("numbers").list_slice(1, 4).ensure_type(int)
+print("list_slice(1, 4):")  # Gets indices 1, 2, 3 (not 4)
+for num in slice_path.walk(small_data):
+    print(f"  {num}")
+```
+
+```
+=== list_slice: Method Comparison ===
+list_all():
+  10
+  20
+  30
+  40
+  50
+
+list_index(2):
+  30
+
+list_slice(1, 4):
+  20
+  30
+  40
 ```
 
 ### 3. Multi-Value Returns
@@ -313,11 +490,11 @@ for product_name, price in path.walk(data):  # Types: str, float
 ```
 
 ```
-=== Section 4: Filtering with Type Safety ===
+=== Section 4: Filtering ===
 Laptop: $999.99
 ```
 
-### 5. Dictionary Iteration with Type Safety
+### 5. Dictionary Iteration
 
 When you need to iterate through all key-value pairs in a dictionary with type inference.
 
