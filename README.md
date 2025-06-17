@@ -30,7 +30,7 @@ As the walk command makes a generator, it can be used in multiple ways.
 from JsonWalker.walk import JsonPath
 
 # Create a path with type inference
-path = JsonPath().key("users").listAll().key("name").ensureType(str)
+path = JsonPath().key("users").list_all().key("name").ensure_type(str)
 
 # Use in a for loop - IDE knows 'name' is a string
 for name in path.walk(data):
@@ -53,7 +53,7 @@ First user: Alice
 1. **Full Type Inference**: IDE autocompletion and type checking throughout your JSON traversal
 2. **Generator-based**: Efficient memory usage for large datasets
 3. **Chainable API**: Build complex queries step by step
-4. **Type-safe operations**: Ensure values match expected types with `ensureType()`
+4. **Type-safe operations**: Ensure values match expected types with `ensure_type()`
 5. **Multi-value queries**: Extract multiple values in a single traversal with proper typing
 6. **Flexible indexing**: Support for positive/negative indices and slicing
 7. **Dictionary iteration**: Built-in support for key-value pair traversal
@@ -64,7 +64,7 @@ First user: Alice
 
 ### 1. Basic Key Access with Type Safety
 
-Start with simple dictionary navigation using `.key()` and add type safety with `.ensureType()`.
+Start with simple dictionary navigation using `.key()` and add type safety with `.ensure_type()`.
 
 ```python
 from JsonWalker.walk import JsonPath
@@ -78,12 +78,12 @@ data = {
 }
 
 # Access user's name with type inference
-path = JsonPath().key("user").key("name").ensureType(str)
+path = JsonPath().key("user").key("name").ensure_type(str)
 for name in path.walk(data):  # IDE knows 'name' is str
     print(f"Name: {name}")
     
 # Access user's age with type inference
-age_path = JsonPath().key("user").key("age").ensureType(int)
+age_path = JsonPath().key("user").key("age").ensure_type(int)
 for age in age_path.walk(data):  # IDE knows 'age' is int
     print(f"Age: {age}")
 ```
@@ -109,7 +109,7 @@ data = {
 }
 
 # Access with defaults and type safety
-path = JsonPath().key("users").listAll().key("name", default="Unknown").ensureType(str)
+path = JsonPath().key("users").list_all().key("name", default="Unknown").ensure_type(str)
 for name in path.walk(data):  # IDE knows 'name' is str
     print(f"Name: {name}")
 ```
@@ -134,7 +134,7 @@ data = {
     "fruits": ["apple", "banana", "cherry"]
 }
 
-path = JsonPath().key("fruits").listAll().ensureType(str)
+path = JsonPath().key("fruits").list_all().ensure_type(str)
 for fruit in path.walk(data):  # IDE knows 'fruit' is str
     print(f"Fruit: {fruit}")
 ```
@@ -157,12 +157,12 @@ data = {
 }
 
 # Get first number as integer
-path = JsonPath().key("numbers").listIndex(0).ensureType(int)
+path = JsonPath().key("numbers").list_index(0).ensure_type(int)
 first_number = next(path.walk(data))  # Type: int
 print(f"First number: {first_number}")
 
 # Get first score as float
-score_path = JsonPath().key("scores").listIndex(0).ensureType(float)
+score_path = JsonPath().key("scores").list_index(0).ensure_type(float)
 first_score = next(score_path.walk(data))  # Type: float
 print(f"First score: {first_score}")
 ```
@@ -202,10 +202,10 @@ data = {
 }
 
 # Get first name, last name, and age with type inference
-path = JsonPath().key("users").listAll().key("profile").multi(
-    JsonPath().key("firstName").ensureType(str),
-    JsonPath().key("lastName").ensureType(str),
-    JsonPath().key("age").ensureType(int)
+path = JsonPath().key("users").list_all().key("profile").multi(
+    JsonPath().key("firstName").ensure_type(str),
+    JsonPath().key("lastName").ensure_type(str),
+    JsonPath().key("age").ensure_type(int)
 )
 
 for firstName, lastName, age in path.walk(data):  # IDE knows types: str, str, int
@@ -245,11 +245,11 @@ data = {
 }
 
 # Get name, price, stock status, and all tags with type safety
-path = JsonPath().key("products").listAll().key("info").multi(
-    JsonPath().key("name").ensureType(str),
-    JsonPath().key("price").ensureType(float),
-    JsonPath().key("inStock").ensureType(bool),
-    JsonPath().key("tags").listAll().ensureType(str)
+path = JsonPath().key("products").list_all().key("info").multi(
+    JsonPath().key("name").ensure_type(str),
+    JsonPath().key("price").ensure_type(float),
+    JsonPath().key("inStock").ensure_type(bool),
+    JsonPath().key("tags").list_all().ensure_type(str)
 )
 
 for name, price, in_stock, tag in path.walk(data):  # Types: str, float, bool, str
@@ -297,15 +297,15 @@ data = {
 }
 
 # Get names and prices of highly-rated electronic products
-path = JsonPath().key('products').listAll().filter(
-    conditionPath=JsonPath().key('category').ensureType(str),
+path = JsonPath().key('products').list_all().filter(
+    condition_path=JsonPath().key('category').ensure_type(str),
     condition=lambda x: x == 'electronics'
 ).filter(
-    conditionPath=JsonPath().key('rating').ensureType(float),
+    condition_path=JsonPath().key('rating').ensure_type(float),
     condition=lambda x: x > 4.3
 ).multi(
-    JsonPath().key('name').ensureType(str),
-    JsonPath().key('price').ensureType(float)
+    JsonPath().key('name').ensure_type(str),
+    JsonPath().key('price').ensure_type(float)
 )
 
 for product_name, price in path.walk(data):  # Types: str, float
@@ -333,7 +333,7 @@ data = {
 }
 
 # Iterate through all key-value pairs
-path = JsonPath().key("scores").yieldKey(JsonPath().ensureType(int))
+path = JsonPath().key("scores").yield_key(JsonPath().ensure_type(int))
 for subject, score in path.walk(data):  # Types: str, int
     print(f"{subject}: {score}")
 ```
@@ -364,9 +364,9 @@ data = {
 }
 
 # Get all subcategory names and their items with type inference
-path = JsonPath().key('categories').yieldKey(
-    JsonPath().yieldKey(
-        JsonPath().listAll().ensureType(str)
+path = JsonPath().key('categories').yield_key(
+    JsonPath().yield_key(
+        JsonPath().list_all().ensure_type(str)
     )
 )
 
@@ -412,15 +412,15 @@ api_response = {
 }
 
 # Extract all user information with complete type safety
-path = JsonPath().key("results").listAll().key("user").multi(
-    JsonPath().key("id").ensureType(int),
+path = JsonPath().key("results").list_all().key("user").multi(
+    JsonPath().key("id").ensure_type(int),
     JsonPath().key("profile").multi(
-        JsonPath().key("name").ensureType(str),
-        JsonPath().key("age").ensureType(int),
-        JsonPath().key("active").ensureType(bool),
-        JsonPath().key("contacts").listAll().multi(
-            JsonPath().key("type").ensureType(str),
-            JsonPath().key("value").ensureType(str)
+        JsonPath().key("name").ensure_type(str),
+        JsonPath().key("age").ensure_type(int),
+        JsonPath().key("active").ensure_type(bool),
+        JsonPath().key("contacts").list_all().multi(
+            JsonPath().key("type").ensure_type(str),
+            JsonPath().key("value").ensure_type(str)
         )
     )
 )
@@ -471,11 +471,11 @@ data = {
 }
 
 # Define different start paths
-current_projects_path = JsonPath().key("current_projects").listAll()
-archived_projects_path = JsonPath().key("archived_projects").listAll()
+current_projects_path = JsonPath().key("current_projects").list_all()
+archived_projects_path = JsonPath().key("archived_projects").list_all()
 
 # Define common end path for extracting team member emails
-team_emails_path = JsonPath().key("team").key("members").listAll().key("email").ensureType(str)
+team_emails_path = JsonPath().key("team").key("members").list_all().key("email").ensure_type(str)
 
 # Combine different starts with the same end using .add()
 current_team_emails = current_projects_path.add(team_emails_path)
@@ -502,9 +502,9 @@ Archived project team emails:
 
 ## Advanced Type Safety Features
 
-### Type Narrowing with ensureType()
+### Type Narrowing with ensure_type()
 
-The `ensureType()` method filters out values that don't match the expected type and provides type inference. You don't need to use it at the end of your paths- the only consequence is that your variable will just have return type of `any`. Type hinting is nice though, which is why this demo has it for all the examples.
+The `ensure_type()` method filters out values that don't match the expected type and provides type inference. You don't need to use it at the end of your paths- the only consequence is that your variable will just have return type of `any`. Type hinting is nice though, which is why this demo has it for all the examples.
 
 ```python
 from JsonWalker.walk import JsonPath
@@ -523,19 +523,19 @@ data = {
 
 # Extract only strings
 print("Strings:")
-string_path = JsonPath().key("mixed_values").listAll().ensureType(str)
+string_path = JsonPath().key("mixed_values").list_all().ensure_type(str)
 for value in string_path.walk(data):  # Type: str
     print(f"  String: {value}")
 
 # Extract only numbers (integers)
 print("Integers:")
-int_path = JsonPath().key("mixed_values").listAll().ensureType(int)
+int_path = JsonPath().key("mixed_values").list_all().ensure_type(int)
 for value in int_path.walk(data):  # Type: int
     print(f"  Integer: {value}")
 
 # Extract only dictionaries
 print("Dictionaries:")
-dict_path = JsonPath().key("mixed_values").listAll().ensureType(dict)
+dict_path = JsonPath().key("mixed_values").list_all().ensure_type(dict)
 for value in dict_path.walk(data):  # Type: dict
     print(f"  Dictionary: {value}")
 ```
@@ -568,8 +568,8 @@ data = {
 }
 
 # Handle optional emails
-path = JsonPath().key("users").listAll().multi(
-    JsonPath().key("name").ensureType(str),
+path = JsonPath().key("users").list_all().multi(
+    JsonPath().key("name").ensure_type(str),
     JsonPath().key("email", default=None)  # May be None or string
 )
 
@@ -613,21 +613,21 @@ data = {
 }
 
 # Extract complete order information with full type safety
-path = JsonPath().key("orders").listAll().filter(
-    conditionPath=JsonPath().key("status").ensureType(str),
+path = JsonPath().key("orders").list_all().filter(
+    condition_path=JsonPath().key("status").ensure_type(str),
     condition=lambda x: x == "completed"
 ).multi(
-    JsonPath().key("id").ensureType(str),
+    JsonPath().key("id").ensure_type(str),
     JsonPath().key("customer").multi(
-        JsonPath().key("name").ensureType(str),
-        JsonPath().key("vip").ensureType(bool)
+        JsonPath().key("name").ensure_type(str),
+        JsonPath().key("vip").ensure_type(bool)
     ),
-    JsonPath().key("items").listAll().multi(
-        JsonPath().key("name").ensureType(str),
-        JsonPath().key("price").ensureType(float),
-        JsonPath().key("quantity").ensureType(int)
+    JsonPath().key("items").list_all().multi(
+        JsonPath().key("name").ensure_type(str),
+        JsonPath().key("price").ensure_type(float),
+        JsonPath().key("quantity").ensure_type(int)
     ),
-    JsonPath().key("total").ensureType(float)
+    JsonPath().key("total").ensure_type(float)
 )
 
 for order_id, (customer_name, is_vip), (item_name, price, qty), total in path.walk(data):
@@ -665,32 +665,32 @@ This comprehensive type safety makes JsonWalker not just a powerful JSON travers
 | Method | Description | Example | Type Return |
 |--------|-------------|---------|-------------|
 | `.key(name, default=None)` | Access dictionary by key with optional default | `.key("users")` | `_KeyPath[Any]` |
-| `.listIndex(index)` | Access list by specific index | `.listIndex(0)` | `_IndexPath[Any]` |
-| `.listSlice(start, end)` | Access range of list items | `.listSlice(1, 5)` | `_SlicePath[Any]` |
-| `.listAll()` | Access all items in a list | `.listAll()` | `_SlicePath[Any]` |
+| `.list_index(index)` | Access list by specific index | `.list_index(0)` | `_IndexPath[Any]` |
+| `.list_slice(start, end)` | Access range of list items | `.list_slice(1, 5)` | `_SlicePath[Any]` |
+| `.list_all()` | Access all items in a list | `.list_all()` | `_SlicePath[Any]` |
 
 ### Type Safety Methods
 
 | Method | Description | Example | Type Return |
 |--------|-------------|---------|-------------|
-| `.ensureType(type_class)` | Ensure value matches expected type | `.ensureType(str)` | `_EnsureTypePath[T]` |
+| `.ensure_type(type_class)` | Ensure value matches expected type | `.ensure_type(str)` | `_ensure_typePath[T]` |
 
 ### Advanced Methods
 
 | Method | Description | Example | Type Return |
 |--------|-------------|---------|-------------|
-| `.filter(conditionPath, condition)` | Filter results based on a condition | `.filter(JsonPath().key('status'), lambda x: x == 'active')` | `_FilteredPath[T]` |
-| `.yieldKey(valuePath)` | Iterate through key-value pairs | `.yieldKey(JsonPath().ensureType(str))` | `_YieldedKeyPlusValuePath[tuple[str, T]]` |
+| `.filter(condition_path, condition)` | Filter results based on a condition | `.filter(JsonPath().key('status'), lambda x: x == 'active')` | `_FilteredPath[T]` |
+| `.yield_key(valuePath)` | Iterate through key-value pairs | `.yield_key(JsonPath().ensure_type(str))` | `_YieldedKeyPlusValuePath[tuple[str, T]]` |
 | `.multi(*paths)` | Get multiple values from current context | `.multi(path1, path2)` | `_MultiValuePath[tuple[...]]` |
 | `.add(path)` | Combine current path with another path segment | `.add(JsonPath().key("name"))` | `_Executor[T]` |
 
 ## Best Practices
 
-1. **Start simple**: Begin with basic `.key()` and `.listAll()` operations
+1. **Start simple**: Begin with basic `.key()` and `.list_all()` operations
 2. **Use meaningful variable names**: The fluent API makes code self-documenting
 3. **Provide defaults**: Use the `default` parameter to handle missing keys gracefully
 4. **Break complex queries**: Split very long chains into intermediate variables for readability
 5. **Leverage .add()**: Create reusable path segments with path composition
 6. **Filter early**: Apply filters as early as possible in your path to improve performance
 7. **Use multi strategically**: When you need multiple related values, `.multi()` is more efficient than separate queries
-8. **Handle mixed types**: Use `ensureType()` to filter and work with specific types. This will also give your IDE the ability to infer types when using the `walk` function
+8. **Handle mixed types**: Use `ensure_type()` to filter and work with specific types. This will also give your IDE the ability to infer types when using the `walk` function
