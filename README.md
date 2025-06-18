@@ -511,6 +511,8 @@ Raoden Sarene Hrathen
 Shai Gaotona Unknown
 ```
 
+If the value at `c` was `None`, the results would have been the same. This is very convenient for dealing with messy data.
+
 If you ever suspect a key is going to be missing, but you want the rest of the inner paths regardless, use a default (often an empty string, if the value is a str) for that key (and make it the same type as your ensured type).
 
 ### 4. Filtering
