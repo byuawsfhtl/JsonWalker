@@ -122,7 +122,7 @@ class _Builder:
         
         Args:
             key_name: the dictionary key to access
-            default: the default value to use if the key is not found; defaults to None
+            default: the default value to use if the key is not found, or its value is None; defaults to None
             
         Returns:
             a path segment that accesses the specified dictionary key
@@ -372,7 +372,7 @@ class _KeyPath(_ContinuablePath[Any]):
     def _apply(self, current: Any, remaining_path: list[_Executor[Any]], contexts: list[Any]) -> Generator[Any, None, None]:
         """Apply the key access operation to the current data.\n
         Attempts to access the specified key from the current data if it's a dictionary.
-        If the key is not found, uses the default value.
+        If the key is not found, or its value is None, uses the default value.
         
         Args:
             current: the current data element (should be a dictionary)
@@ -384,6 +384,8 @@ class _KeyPath(_ContinuablePath[Any]):
         """
         if isinstance(current, dict):
             value = current.get(self.dict_key, self.default)
+            if (self.default is not None) and (value is None):
+                value = self.default
             yield from self._traverse(value, remaining_path, contexts)
 
 
@@ -641,11 +643,10 @@ class _MultiValuePath(_TerminalPath[T]):
         self.paths = paths
     
     def _apply(self, current: Any, _: list[_Executor[Any]], __: list[Any]) -> Generator[T, None, None]:
-        """Apply multiple paths and yield all combinations of their results.
-        
+        """Apply multiple paths and yield all combinations of their results.\n
         Evaluates each path against the current data, collects all results, and yields
-        every possible combination of results as tuples. If a path yields no results,
-        None is used as a placeholder in the combinations.
+        every possible combination of results as tuples. If any inner path yields no results,
+        the entire current data element is skipped (no combinations are yielded).
         
         Args:
             current: the current data element to apply all paths to
@@ -653,12 +654,16 @@ class _MultiValuePath(_TerminalPath[T]):
             __: unused context information (terminal path)
             
         Yields:
-            T: Each combination of results from all paths as a tuple
+            T: Each combination of results from all paths as a tuple, only when all paths yield results
         """
         all_results = []
         for path in self.paths:
             path_results = list(path.walk(current))
-            all_results.append(path_results if path_results else [None])
+            if not path_results:
+                # If any path yields no results, skip this entire data element
+                return
+            all_results.append(path_results)
         
+        # Only reach here if all paths yielded at least one result
         for combination in itertools.product(*all_results):
             yield cast(T, combination)
