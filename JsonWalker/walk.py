@@ -645,7 +645,7 @@ class _MultiValuePath(_TerminalPath[T]):
     def _apply(self, current: Any, _: list[_Executor[Any]], __: list[Any]) -> Generator[T, None, None]:
         """Apply multiple paths and yield all combinations of their results.\n
         Evaluates each path against the current data, collects all results, and yields
-        every possible combination of results as tuples. If any path yields no results,
+        every possible combination of results as tuples. If any inner path yields no results,
         the entire current data element is skipped (no combinations are yielded).
         
         Args:
