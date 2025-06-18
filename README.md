@@ -94,7 +94,9 @@ Name: John
 Age: 30
 ```
 
-#### Handling Missing Keys with Defaults
+#### Handling Missing Keys with Defaults and Type Safety
+
+At the end of a path (usually right before ensure_type), it is often a good idea to have a default value if you want something to return, even if the path found nothing. It is STRONGLY encouraged that you make the default value the same as the ensured type, if you have that. This will make the type hinting accurate.
 
 ```python
 from JsonWalker.walk import JsonPath
@@ -354,6 +356,10 @@ list_slice(1, 4):
 
 Use `.multi()` to get multiple values from the same level (with complete type safety).
 
+Because multi is a terminal path, it's recommend you create as many path parts as you can before you start doing multi.
+
+Additionally, it's important that you understand that  `list_all` and `list_slice` within an inner path will make you output far more verbose, because multi will yield the product of all combinations. If you are using all `key` or `list_index` path segments, you will only have one yielded result per every inner path, and thus there will only be one product.
+
 #### Basic Multi Example with Type Inference
 
 ```python
@@ -443,6 +449,72 @@ Book ($15.5) - Out of Stock - Tag: education
 Book ($15.5) - Out of Stock - Tag: reading
 ```
 
+#### Multi with non standardized data
+
+In the following example, we have the three viewpoint character from Brandon Sanderson novels. Unfortunately, the last example has only two viewpoint characters (no c key). We have two choices.
+
+```python
+from JsonWalker.walk import JsonPath
+
+data = [
+    {
+        "a": "Kaladin",
+        "b": "Shallan",
+        "c": "Dalinar"
+    },
+    {
+        "a": "Vin",
+        "b": "Elend",
+        "c": "Kelsier"
+    },
+    {
+        "a": "Raoden",
+        "b": "Sarene",
+        "c": "Hrathen"
+    },
+    {
+        "a": "Shai",
+        "b": "Gaotona"
+    }
+]
+
+print('===skip example=== ')
+skip_path = JsonPath().list_all().multi(
+    JsonPath().key('a').ensure_type(str),
+    JsonPath().key('b').ensure_type(str),
+    JsonPath().key('c').ensure_type(str)
+)
+for a, b, c in skip_path.walk(data):
+    print(a, b, c)
+
+print()
+
+print('===default example===')
+default_path = JsonPath().list_all().multi(
+    JsonPath().key('a').ensure_type(str),
+    JsonPath().key('b').ensure_type(str),
+    JsonPath().key('c', default='Unknown').ensure_type(str)
+)
+for a, b, c in default_path.walk(data):
+    print(a, b, c)
+```
+```
+===skip example===
+Kaladin Shallan Dalinar
+Vin Elend Kelsier
+Raoden Sarene Hrathen
+
+===default example===
+Kaladin Shallan Dalinar
+Vin Elend Kelsier
+Raoden Sarene Hrathen
+Shai Gaotona Unknown
+```
+
+If the value at `c` was `None`, the results would have been the same. This is very convenient for dealing with messy data.
+
+If you ever suspect a key is going to be missing, but you want the rest of the inner paths regardless, use a default (often an empty string, if the value is a str) for that key (and make it the same type as your ensured type).
+
 ### 4. Filtering
 
 Use `.filter()` to include only items that meet certain conditions
@@ -494,7 +566,9 @@ for product_name, price in path.walk(data):  # Types: str, float
 Laptop: $999.99
 ```
 
-### 5. Dictionary Iteration
+As you can see, the filter does not have to be the same path as is later explored. It only continues the path that has already been created up to that point.
+
+### 5. Dictionary Iteration (yield_key)
 
 When you need to iterate through all key-value pairs in a dictionary with type inference.
 
